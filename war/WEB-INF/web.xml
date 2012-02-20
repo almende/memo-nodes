@@ -6,7 +6,7 @@ xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
 http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 	<servlet>
 		<servlet-name>Memo</servlet-name>
-		<servlet-class>com.ask.memo.MemoServlet</servlet-class>
+		<servlet-class>com.chap.memo.memoNodes.MemoServlet</servlet-class>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>Memo</servlet-name>
@@ -14,7 +14,7 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 	</servlet-mapping>
 	<servlet>
 		<servlet-name>SearchTest</servlet-name>
-		<servlet-class>com.ask.memo.MemoSearchServlet</servlet-class>
+		<servlet-class>com.chap.memo.memoNodes.MemoSearchServlet</servlet-class>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>SearchTest</servlet-name>
