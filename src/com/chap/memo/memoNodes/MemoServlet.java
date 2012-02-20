@@ -83,7 +83,7 @@ public class MemoServlet extends HttpServlet {
 		
 		//Generate 10.000 nodes in one linked list
 		Node node = Node.store("start");
-		for (int i=0; i< 5000000; i++){
+		for (int i=0; i< 500000; i++){
 			node = Node.storeAsParent(new Integer(i).toString(), node).parent;
 		}		
 		Date time = new Date();
