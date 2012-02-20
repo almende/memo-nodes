@@ -1,0 +1,18 @@
+CHAP Memo MemoNodes graph database
+
+LINKS
+http://www.almende.com
+https://github.com/ludost/MemoNodes
+
+DESCRIPTION
+
+Java library aimed at providing a graph database on top of the GAE datastore. 
+
+LICENSE
+
+Almende uses the Apache License Version 2.0 as recommended license for its development projects. The Apache 2.0 licence is approved by the Open Source Initiative.
+
+The Apache license is a permissive license, meaning that software developed under this license may be used, copied, re-used and distributed freely by third parties, provided that they include the original copyrights, attributions and notices.
+
+The full license text can be found in the LICENSE file at the root of this repository. 
+

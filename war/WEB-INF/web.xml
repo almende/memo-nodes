@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns="http://java.sun.com/xml/ns/javaee"
+xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+	<servlet>
+		<servlet-name>Memo</servlet-name>
+		<servlet-class>com.ask.memo.MemoServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Memo</servlet-name>
+		<url-pattern>/memo</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>SearchTest</servlet-name>
+		<servlet-class>com.ask.memo.MemoSearchServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>SearchTest</servlet-name>
+		<url-pattern>/search</url-pattern>
+	</servlet-mapping>
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+	<!--
+	<filter>
+       <filter-name>appstats</filter-name>
+       <filter-class>com.google.appengine.tools.appstats.AppstatsFilter</filter-class>
+       <init-param>
+           <param-name>logMessage</param-name>
+           <param-value>Appstats available: /appstats/details?time={ID}</param-value>
+        </init-param>
+   </filter>
+   <filter-mapping>
+       <filter-name>appstats</filter-name>
+       <url-pattern>/*</url-pattern>
+   </filter-mapping>
+	<servlet>
+       <servlet-name>appstats</servlet-name>
+       <servlet-class>com.google.appengine.tools.appstats.AppstatsServlet</servlet-class>
+   </servlet>
+   <servlet-mapping>
+       <servlet-name>appstats</servlet-name>
+       <url-pattern>/appstats/*</url-pattern>
+   </servlet-mapping>
+
+   <security-constraint>
+       <web-resource-collection>
+           <url-pattern>/appstats/*</url-pattern>
+       </web-resource-collection>
+       <auth-constraint>
+           <role-name>admin</role-name>
+       </auth-constraint>
+   </security-constraint>
+   -->
+</web-app>

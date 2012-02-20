@@ -1,0 +1,9 @@
+
+-Sorting feature in "Algorithm"  (Pre-topx?)
+-Speed enhancements:
+	-keeping Nodes in memory more effectively
+	-Get Nodes into memory more effectively, more heuristics, better clustering, better indexes
+	-Keeping memory within the Nodes more coherent in memory (by encoding all fields in one byte array);
+	(As Nodes are immutable, is there no compiler annotation that tells Java to keep all elements together?)
+-JSON import for Nodes/Arcs (bulk creation)
+
