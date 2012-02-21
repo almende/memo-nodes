@@ -162,6 +162,22 @@ public final class Node implements Serializable,MemoNode {
 		}
 		return new Node(this,this.children,parentids.toArray(new UUID[0]));
 	}
+	public Node bulkDelChildren(ArrayList<MemoNode> children){
+		List<UUID> result = Arrays.asList(this.children);
+		for (MemoNode node: children){
+			if (result.remove(node.getId())) node.delParent(this, false);
+		}
+		return new Node(this,result.toArray(new UUID[0]),this.parents);
+	}
+	
+	public Node bulkDelParents(ArrayList<MemoNode> parents){
+		List<UUID> result = Arrays.asList(this.parents);
+		for (MemoNode node: parents){
+			if (result.remove(node.getId())) node.delChild(this, false);
+		}
+		return new Node(this,this.children,result.toArray(new UUID[0]));		
+	}
+	
 	/* Update functions, both a static and non-static variant */
 	public static Node update(Node prev, String value){
 		return new Node(prev,prev.id,value);
@@ -202,7 +218,7 @@ public final class Node implements Serializable,MemoNode {
 	}
 	private Arc addChild(Node child,boolean doOther){
 		//System.out.println("Add child:"+this.value+":"+child.value+"/"+doOther);
-		UUID[] children = this.children; //copy which may be re-ordered for search.
+		UUID[] children = this.children.clone(); //copy which may be re-ordered for search.
 		Arrays.sort(children);
 		if (Arrays.binarySearch(children,child.id) >= 0){
 			//System.out.println("Double try to add child");
@@ -221,7 +237,7 @@ public final class Node implements Serializable,MemoNode {
 	}
 	private Arc addParent(Node parent,boolean doOther){
 		//System.out.println("Add Parent:"+this.value+":"+parent.value+"/"+doOther);
-		UUID[] parents = this.parents;
+		UUID[] parents = this.parents.clone();
 		Arrays.sort(parents);
 		if (Arrays.binarySearch(parents,parent.id) >= 0){
 			//System.out.println("Double try to add parent");
@@ -242,25 +258,49 @@ public final class Node implements Serializable,MemoNode {
 	public Arc addChild(MemoNode node){
 		return this.addChild(node.getRealNode(), true);
 	}
-	public ArrayList<Node> getChildren(){
-		ArrayList<Node> result = new ArrayList<Node>(this.children.length);
+	public Node delChild(MemoNode child){
+		return this.delChild(child.getRealNode(),true);
+	}
+	public Node delChild(MemoNode child, boolean doOther){
+		ArrayList<UUID> result = new ArrayList<UUID>(this.children.length);
+		for (UUID uuid: this.children) {
+			if (!uuid.equals(child.getId())) result.add(uuid);
+		}
+		UUID[] newchildren=result.toArray(new UUID[0]);
+		if (doOther) child.delParent(this,false);
+		return new Node(this,newchildren,this.parents);
+	}
+	public Node delParent(MemoNode parent){
+		return this.delParent(parent.getRealNode(),true);
+	}
+	public Node delParent(MemoNode parent, boolean doOther){
+		ArrayList<UUID> result = new ArrayList<UUID>(this.parents.length);
+		for (UUID uuid: this.parents) {
+			if (!uuid.equals(parent.getId())) result.add(uuid);
+		}
+		UUID[] newparents=result.toArray(new UUID[0]);
+		if (doOther) parent.delChild(this,false);
+		return new Node(this,this.children,newparents);
+	}
+	public ArrayList<MemoNode> getChildren(){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.children.length);
 		List<UUID> children = Arrays.asList(this.children);
 		for (UUID id: children){
 			result.add(Node.find(id));
 		}
 		return result;
 	}
-	public ArrayList<Node> getParents(){
-		ArrayList<Node> result = new ArrayList<Node>(this.parents.length);
+	public ArrayList<MemoNode> getParents(){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.parents.length);
 		List<UUID> parents = Arrays.asList(this.parents);
 		for (UUID id: parents){
 			result.add(Node.find(id));
 		}
 		return result;
 	}
-	public ArrayList<Node> getChildrenByValue(String value,int topx){
-		ArrayList<Node> result = new ArrayList<Node>(this.children.length);
-		for (Node child : getChildren()){
+	public ArrayList<MemoNode> getChildrenByValue(String value,int topx){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.children.length);
+		for (MemoNode child : getChildren()){
 			if (child.getValue().equals(value)){
 				result.add(child);
 				if (topx > 0 && result.size() >= topx) return result;
@@ -268,9 +308,9 @@ public final class Node implements Serializable,MemoNode {
 		}
 		return result;
 	}
-	public ArrayList<Node> getChildrenByRegEx(Pattern regex,int topx){
-		ArrayList<Node> result = new ArrayList<Node>(this.children.length);
-		for (Node child : getChildren()){
+	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex,int topx){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.children.length);
+		for (MemoNode child : getChildren()){
 			if (regex.matcher(child.getValue()).matches()){
 				result.add(child);
 				if (topx > 0 && result.size() >= topx) return result;
@@ -278,9 +318,9 @@ public final class Node implements Serializable,MemoNode {
 		}
 		return result;
 	}
-	public ArrayList<Node> getChildrenByRange(int lower, int upper, int topx){
-		ArrayList<Node> result = new ArrayList<Node>(this.children.length);
-		for (Node child : getChildren()){
+	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.children.length);
+		for (MemoNode child : getChildren()){
 			try {
 				int value = Integer.parseInt(child.getValue());
 				if (value >= lower && value <= upper){
@@ -293,32 +333,32 @@ public final class Node implements Serializable,MemoNode {
 		return result;
 	}
 	public String getPropertyValue(String propName){
-		ArrayList<Node> properties = getChildrenByValue(propName,1);
+		ArrayList<MemoNode> properties = getChildrenByValue(propName,1);
 		if (properties.size() == 1){
-			ArrayList<Node> values = properties.get(0).getChildren();
+			ArrayList<MemoNode> values = properties.get(0).getChildren();
 			if (values.size() != 1) System.out.println("Warning, property with multiple values");
 			if (values.size() >= 1) return values.get(0).getValue();
 		}
 		return "";
 	}
 
-	private ArrayList<Node> doPatternStep(Node step, Node toCompare){
-		ArrayList<Node> result = new ArrayList<Node>();
-		ArrayList<Node> nextPats = step.getChildren();
+	private ArrayList<MemoNode> doPatternStep(MemoNode step, MemoNode toCompare){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>();
+		ArrayList<MemoNode> nextPats = step.getChildren();
 		int toMatchNo = nextPats.size();
 		if (toMatchNo == 0){
 			//End of pattern, always correct.
 			result.add(toCompare);
 			return result;
 		}
-		ArrayList<Node> children = toCompare.getChildren();
+		ArrayList<MemoNode> children = toCompare.getChildren();
 		if (children.size()<toMatchNo){
 			//Will never match, early out
 			return result;
 		}
 		
 		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
-		for (Node nextPat : nextPats){
+		for (MemoNode nextPat : nextPats){
 			queries.add(MemoQuery.parseQuery(nextPat));
 		}
 		MemoQuery[] queryArray = { new MemoQuery()};
@@ -326,13 +366,13 @@ public final class Node implements Serializable,MemoNode {
 		Arrays.sort(queryArray);	
 
 		//int count=0;
-		for (Node child : children){
+		for (MemoNode child : children){
 			//count++;
 			boolean found=false;
 			//Compare each child, at least one pattern path needs to match
 			for (MemoQuery query: queryArray){
 				if (query.match(child)){
-					ArrayList<Node> subRes = doPatternStep(query.node,child);
+					ArrayList<MemoNode> subRes = doPatternStep(query.node,child);
 					if (subRes.size() > 0){
 						result.addAll(subRes);
 						toMatchNo--;
@@ -347,14 +387,14 @@ public final class Node implements Serializable,MemoNode {
 			}
 		}
 		if (toMatchNo > 0){
-			return new ArrayList<Node>(); //Not all patterns were matched!
+			return new ArrayList<MemoNode>(); //Not all patterns were matched!
 		}
 		if (result.size() > 0){
 			result.add(0,toCompare);
 		}
 		return result;
 	}
-	private ArrayList<MemoResult> doPreAmbleStep(Node step, Node toCompare, ArrayList<Node> patterns, ArrayList<Node> path,ArrayList<MemoResult> allResults, int topx){
+	private ArrayList<MemoResult> doPreAmbleStep(MemoNode step, MemoNode toCompare, ArrayList<MemoNode> patterns, ArrayList<MemoNode> path,ArrayList<MemoResult> allResults, int topx){
 		ArrayList<MemoResult> result = new ArrayList<MemoResult>();
 		if (path.contains(toCompare)){
 			//Loop detected!
@@ -367,10 +407,10 @@ public final class Node implements Serializable,MemoNode {
 			}
 		}
 		//First check if current Node matches any of the patterns, if it does, don't go deeper, just return the match.
-		for (Node pattern: patterns){
-			ArrayList<Node> ret = doPatternStep(pattern,toCompare);
+		for (MemoNode pattern: patterns){
+			ArrayList<MemoNode> ret = doPatternStep(pattern.getRealNode(),toCompare.getRealNode());
 			if (ret.size() > 0){
-				Node patternRoot = ret.get(1);
+				MemoNode patternRoot = ret.get(1);
 				ret.addAll(0,path);
 				result.add(new MemoResult(patternRoot,ret));
 				allResults.addAll(result);
@@ -378,21 +418,21 @@ public final class Node implements Serializable,MemoNode {
 			}
 		}
 		path.add(toCompare);
-		ArrayList<Node> nextPats = step.getChildren();
+		ArrayList<MemoNode> nextPats = step.getChildren();
 		int toMatchNo = nextPats.size();
 		if (toMatchNo == 0){
 			//End of pattern, always correct.
 		}
-		ArrayList<Node> children = toCompare.getChildren();		
+		ArrayList<MemoNode> children = toCompare.getChildren();		
 		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
-		for (Node nextPat : nextPats){
+		for (MemoNode nextPat : nextPats){
 			queries.add(MemoQuery.parseQuery(nextPat));
 		}
 		MemoQuery[] queryArray = {new MemoQuery()};
 		queryArray = queries.toArray(queryArray);
 		Arrays.sort(queryArray);	
 		
-		for (Node child : children){
+		for (MemoNode child : children){
 			boolean found=false;
 			//Compare each child, at least one pattern path needs to match
 			for (MemoQuery query: queryArray){
@@ -412,7 +452,7 @@ public final class Node implements Serializable,MemoNode {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public ArrayList<MemoResult> search(MemoNode algorithm,int topx){
+	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles, ArrayList<MemoNode> patterns,int topx){
 		ArrayList<MemoResult> result = null;
 		
 		if (topx <= 0){
@@ -420,24 +460,34 @@ public final class Node implements Serializable,MemoNode {
 		} else {
 			result = new ArrayList<MemoResult>(Math.min(this.children.length,topx));
 		}
-		ArrayList<Node> preambles = algorithm.getChildrenByValue("PreAmble", -1);
-		ArrayList<Node> patterns = algorithm.getChildrenByValue("Pattern", -1);
 		if (patterns.size() <= 0) {
 			System.out.println("Warning, empty algorithm used.");
 			return result;
 		}
-		for (Node preamble : preambles){
-			result.addAll(doPreAmbleStep(preamble,this,patterns,new ArrayList<Node>(),(ArrayList<MemoResult>) result.clone(),topx));
+		for (MemoNode preamble : preambles){
+			result.addAll(doPreAmbleStep(preamble,(MemoNode)this,patterns,new ArrayList<MemoNode>(),(ArrayList<MemoResult>) result.clone(),topx));
 		}
 		return result;
+	}
+	public ArrayList<MemoResult> search(MemoNode algorithm,int topx){
+		ArrayList<MemoNode> preambles = algorithm.getChildrenByValue("PreAmble", -1);
+		ArrayList<MemoNode> patterns = algorithm.getChildrenByValue("Pattern", -1);
+		return this.search(preambles,patterns,topx);
+	}
+	public ArrayList<MemoResult> search(MemoNode preamble,MemoNode pattern,int topx){
+		ArrayList<MemoNode> preambles = new ArrayList<MemoNode>(1);
+		preambles.add(preamble.getRealNode());
+		ArrayList<MemoNode> patterns = new ArrayList<MemoNode>(1);
+		patterns.add(pattern.getRealNode());
+		return this.search(preambles,patterns,topx);
 	}
 }
 
 class MemoQuery implements Comparable<MemoQuery> {
 	public enum Type { Equal, Regex, Range, Any };
-	static HashMap<Node,MemoQuery> queryCache = new HashMap<Node,MemoQuery>();
+	static HashMap<MemoNode,MemoQuery> queryCache = new HashMap<MemoNode,MemoQuery>();
 	
-	Node node = null;
+	MemoNode node = null;
 	Type type = Type.Equal; 
 	String value = "";
 	java.util.regex.Pattern regex = null;
@@ -449,7 +499,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 		return this.type.compareTo(arg0.type);
 	}
 	
-	public static MemoQuery parseQuery(Node step){
+	public static MemoQuery parseQuery(MemoNode step){
 		if (queryCache.containsKey(step)){
 			return queryCache.get(step);
 		}
@@ -476,7 +526,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 		queryCache.put(step, result);
 		return result;
 	}
-	public boolean match(Node node){
+	public boolean match(MemoNode node){
 		switch (this.type){
 		case Equal:
 			return node.getValue().equals(this.value);

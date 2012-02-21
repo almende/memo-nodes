@@ -82,7 +82,7 @@ public class MemoServlet extends HttpServlet {
 		
 		
 		//Generate 10.000 nodes in one linked list
-		Node node = Node.store("start");
+		MemoNode node = Node.store("start");
 		for (int i=0; i< 500000; i++){
 			node = Node.storeAsParent(new Integer(i).toString(), node).parent;
 		}		
@@ -94,7 +94,7 @@ public class MemoServlet extends HttpServlet {
 		while (node != null ){
 			String value=node.getValue();
 			//System.out.println(value+ ":" + node.getChildren().size());
-			ArrayList<Node> children = node.getChildren();
+			ArrayList<MemoNode> children = node.getChildren();
 			if (children.isEmpty()){
 				System.out.println(node.getId() + " has no children!");
 				break;

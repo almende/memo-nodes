@@ -14,17 +14,31 @@ public interface MemoNode {
 	public UUID getId();
 	public String getValue();
 	public Date getTimestamp();
+	
 	public Arc addParent(MemoNode parent,boolean doOther);
 	public Arc addChild(MemoNode child,boolean doOther);
 	public Arc addParent(MemoNode node);
 	public Arc addChild(MemoNode node);
-	public Node bulkAddParents(ArrayList<MemoNode> parents);
-	public Node bulkAddChildren(ArrayList<MemoNode> children);
-	public ArrayList<Node> getChildren();
-	public ArrayList<Node> getParents();
-	public ArrayList<Node> getChildrenByValue(String value,int topx);
-	public ArrayList<Node> getChildrenByRegEx(Pattern regex,int topx);
-	public ArrayList<Node> getChildrenByRange(int lower, int upper, int topx);
+	
+	public MemoNode delChild(MemoNode child);
+	public MemoNode delChild(MemoNode child, boolean doOther);
+	public MemoNode delParent(MemoNode parent);
+	public MemoNode delParent(MemoNode parent, boolean doOther);
+	
+	public MemoNode bulkAddParents(ArrayList<MemoNode> parents);
+	public MemoNode bulkAddChildren(ArrayList<MemoNode> children);
+	public MemoNode bulkDelParents(ArrayList<MemoNode> parents);
+	public MemoNode bulkDelChildren(ArrayList<MemoNode> children);
+	
+	public ArrayList<MemoNode> getChildren();
+	public ArrayList<MemoNode> getParents();
+	public ArrayList<MemoNode> getChildrenByValue(String value,int topx);
+	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex,int topx);
+	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx);
+	
 	public String getPropertyValue(String propName);
+	
+	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,ArrayList<MemoNode> patterns,int topx);
+	public ArrayList<MemoResult> search(MemoNode preamble,MemoNode pattern,int topx);
 	public ArrayList<MemoResult> search(MemoNode algorithm,int topx);
 }

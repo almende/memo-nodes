@@ -15,6 +15,19 @@ public class Unode implements MemoNode {
 		}
 		this.myNode=myNode;
 	}
+	public Unode(MemoNode myNode){
+		if (myNode == null){
+			throw new NullPointerException();
+		}
+		this.myNode=myNode.getRealNode();
+	}
+	public Unode(Unode myNode){
+		//Strange clone like action?
+		if (myNode == null){
+			throw new NullPointerException();
+		}
+		this.myNode=myNode.getRealNode();
+	}
 	public Node getRealNode(){
 		return myNode;
 	}
@@ -76,36 +89,67 @@ public class Unode implements MemoNode {
 		if (myNode == null)System.out.println("Error, actuatedNode going to null, addChild");
 		return arc;
 	}
-	
-	public Node bulkAddParents(ArrayList<MemoNode> parents){
+
+	public Node delParent(MemoNode node){
+		myNode = myNode.delParent(node);
+		return myNode;
+	}
+	public Node delChild(MemoNode node){
+		myNode = myNode.delChild(node);
+		return myNode;
+	}
+	public Node delParent(MemoNode node,boolean doOther){
+		myNode = myNode.delParent(node.getRealNode(),doOther);
+		return myNode;
+	}
+	public Node delChild(MemoNode node,boolean doOther){
+		myNode = myNode.delChild(node.getRealNode(),doOther);
+		return myNode;
+	}
+	public MemoNode bulkAddParents(ArrayList<MemoNode> parents){
 		myNode = myNode.bulkAddParents(parents);
 		return myNode;
 	}
-	public Node bulkAddChildren(ArrayList<MemoNode> children){
+	public MemoNode bulkAddChildren(ArrayList<MemoNode> children){
 		myNode = myNode.bulkAddChildren(children);
 		return myNode;		
 	}
+	public MemoNode bulkDelParents(ArrayList<MemoNode> parents){
+		myNode = myNode.bulkDelParents(parents);
+		return myNode;
+	}
+	public MemoNode bulkDelChildren(ArrayList<MemoNode> children){
+		myNode = myNode.bulkDelChildren(children);
+		return myNode;		
+	}
 	
-	public ArrayList<Node> getChildren(){
+	public ArrayList<MemoNode> getChildren(){
 		return myNode.getChildren();
 	}
-	public ArrayList<Node> getParents(){
+	public ArrayList<MemoNode> getParents(){
 		return myNode.getParents();
 	}
-	public ArrayList<Node> getChildrenByValue(String value,int topx){
+	public ArrayList<MemoNode> getChildrenByValue(String value,int topx){
 		return myNode.getChildrenByValue(value, topx);
 	}
-	public ArrayList<Node> getChildrenByRegEx(Pattern regex,int topx){
+	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex,int topx){
 		return myNode.getChildrenByRegEx(regex, topx);
 	}
-	public ArrayList<Node> getChildrenByRange(int lower, int upper, int topx){
+	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx){
 		return myNode.getChildrenByRange(lower, upper, topx);
 	}
 	public String getPropertyValue(String propName){
 		return myNode.getPropertyValue(propName);
 	}
-	public ArrayList<MemoResult> search(MemoNode algorithm,int topx){
-		return myNode.search(algorithm, topx);
+	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,ArrayList<MemoNode> patterns,int topx){
+		return myNode.search(preambles,patterns, topx);
 	}
-
+	public ArrayList<MemoResult> search(MemoNode preamble,MemoNode pattern,int topx){
+		return myNode.search(preamble,pattern,topx);
+	}
+	public ArrayList<MemoResult> search(MemoNode algorithm,int topx){
+		ArrayList<MemoNode> preambles = algorithm.getChildrenByValue("PreAmble", -1);
+		ArrayList<MemoNode> patterns = algorithm.getChildrenByValue("Pattern", -1);
+		return myNode.search(preambles,patterns, topx);
+	}
 }
