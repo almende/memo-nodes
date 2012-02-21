@@ -37,6 +37,7 @@ public interface MemoNode {
 	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx);
 	
 	public String getPropertyValue(String propName);
+	public MemoNode setPropertyValue(String propName,String propValue);
 	
 	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,ArrayList<MemoNode> patterns,int topx);
 	public ArrayList<MemoResult> search(MemoNode preamble,MemoNode pattern,int topx);

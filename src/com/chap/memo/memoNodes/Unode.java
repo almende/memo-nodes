@@ -90,37 +90,37 @@ public class Unode implements MemoNode {
 		return arc;
 	}
 
-	public Node delParent(MemoNode node){
+	public MemoNode delParent(MemoNode node){
 		myNode = myNode.delParent(node);
-		return myNode;
+		return this;
 	}
-	public Node delChild(MemoNode node){
+	public MemoNode delChild(MemoNode node){
 		myNode = myNode.delChild(node);
-		return myNode;
+		return this;
 	}
-	public Node delParent(MemoNode node,boolean doOther){
+	public MemoNode delParent(MemoNode node,boolean doOther){
 		myNode = myNode.delParent(node.getRealNode(),doOther);
-		return myNode;
+		return this;
 	}
-	public Node delChild(MemoNode node,boolean doOther){
+	public MemoNode delChild(MemoNode node,boolean doOther){
 		myNode = myNode.delChild(node.getRealNode(),doOther);
-		return myNode;
+		return this;
 	}
 	public MemoNode bulkAddParents(ArrayList<MemoNode> parents){
 		myNode = myNode.bulkAddParents(parents);
-		return myNode;
+		return this;
 	}
 	public MemoNode bulkAddChildren(ArrayList<MemoNode> children){
 		myNode = myNode.bulkAddChildren(children);
-		return myNode;		
+		return this;
 	}
 	public MemoNode bulkDelParents(ArrayList<MemoNode> parents){
 		myNode = myNode.bulkDelParents(parents);
-		return myNode;
+		return this;
 	}
 	public MemoNode bulkDelChildren(ArrayList<MemoNode> children){
 		myNode = myNode.bulkDelChildren(children);
-		return myNode;		
+		return this;
 	}
 	
 	public ArrayList<MemoNode> getChildren(){
@@ -140,6 +140,10 @@ public class Unode implements MemoNode {
 	}
 	public String getPropertyValue(String propName){
 		return myNode.getPropertyValue(propName);
+	}
+	public MemoNode setPropertyValue(String propName,String propValue){
+		myNode = (Node) myNode.setPropertyValue(propName, propValue);
+		return this;
 	}
 	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,ArrayList<MemoNode> patterns,int topx){
 		return myNode.search(preambles,patterns, topx);

@@ -341,6 +341,25 @@ public final class Node implements Serializable,MemoNode {
 		}
 		return "";
 	}
+	public MemoNode setPropertyValue(String propName,String propValue){
+		ArrayList<MemoNode> properties = getChildrenByValue(propName,1);
+		switch (properties.size()){
+		case 0: 
+			MemoNode value = Node.store(propValue);
+			MemoNode property = Node.storeAsParent(propName, value).parent;
+			return this.addChild(property).parent;
+		case 1:
+			ArrayList<MemoNode> values = properties.get(0).getChildren();
+			if (values.size() == 1){
+				values.get(0).update(propValue);
+				return this;
+			}
+			//explicit no-break
+		default:
+			System.out.println("Error, incorrect properties found, skipping setPropertyValue("+propName+","+propValue+")!");
+			return this;
+		}
+	}
 
 	private ArrayList<MemoNode> doPatternStep(MemoNode step, MemoNode toCompare){
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>();
