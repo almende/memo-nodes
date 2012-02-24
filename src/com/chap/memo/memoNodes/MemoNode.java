@@ -66,4 +66,6 @@ public interface MemoNode {
 			int topx);
 
 	public ArrayList<MemoResult> search(MemoNode algorithm, int topx);
+	
+	public String toJSON(String result, int depth);
 }

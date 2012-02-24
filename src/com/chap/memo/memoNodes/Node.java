@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 
 import com.eaio.uuid.UUID;
 
+
 /* Node is completely immutable, meaning any change creates a new node
  * This leads to guaranteed consistency of the stored version, it will never change for the 
  * specific node. There can be newer versions of the Node somewhere, it is good to check for 
@@ -45,6 +46,15 @@ public final class Node implements Serializable, MemoNode {
 		return this;
 	}
 
+	public static MemoNode getRootNode(){
+		Node result = NodeList.find(ROOT);
+		if (result == null){
+			result = new Node(ROOT,"root");
+			NodeList.store(result);
+		}
+		return new Unode(result);
+	}
+	
 	private Node(UUID id, String value, UUID[] children, UUID[] parents) {
 		this.id = id;
 		this.value = value;
@@ -576,6 +586,26 @@ public final class Node implements Serializable, MemoNode {
 		ArrayList<MemoNode> patterns = new ArrayList<MemoNode>(1);
 		patterns.add(pattern.getRealNode());
 		return this.search(preambles, patterns, topx);
+	}
+	
+	public String toJSON(String result, int depth){
+		Boolean initial=false;
+		if (result.equals("")) initial=true;
+		
+		if (initial) result="],\"links\":[";
+		
+		ArrayList<MemoNode> children= this.getChildren();
+		if (depth-- > 0){
+			for (MemoNode child : children){
+				result = child.toJSON(result,depth);
+				result += "{\"from\":\""+this.getId().toString()+"\",\"to\":\""+child.getId().toString()+"\"}"+(!initial?",":"");
+			}
+		}
+		result = (!initial?",":"")+"{\"id\":\""+this.getId().toString()+"\",\"title\":\""+this.getValue()+"\"}"+result;
+		
+		if (initial) result="{\"nodes\":["+result+"]}";	
+		
+		return result;
 	}
 }
 

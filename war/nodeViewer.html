@@ -1,0 +1,43 @@
+<html>
+	<head>
+		<script src="js/network-min.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+		
+		<script>
+		var updateNetwork = function(url){
+			jQuery.ajax({
+				url:url,
+				success:function(responseText){
+			    	var options = {
+	          			width:  "400px", 
+	          			height: "500px",
+	          			stabilize: false, // do not stabilize before displaying
+	          			nodes:{
+	          				style:"dot"
+	          			}
+	        		};
+	        		console.log(responseText);
+	        		var json = responseText;
+	        		if (typeof responseText == "String"){
+	        			 json = JSON.parse(responseText);
+	        		}
+	        		
+					if (json != null && json.nodes != null && json.links != null){
+						var network = new links.Network(document.getElementById('myNodeView'));
+						network.draw(json.nodes, json.links, options);									
+					}
+				}
+			})
+		}
+		
+		$(document).ready(function() {
+			updateNetwork("http://localhost:8888/dialog/1d370f00-5ed8-11e1-b8e6-00007f000001?node_export=true");
+		});
+		</script>
+	</head>
+	<body>
+		URL: <input name="url" size=100 value="http://localhost:8888/dialog/1d370f00-5ed8-11e1-b8e6-00007f000001?node_export=true" onChange="updateNetwork(this.value);">
+		<br><br>
+		<div id="myNodeView"/>
+	</body>
+</html>
