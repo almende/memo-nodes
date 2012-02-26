@@ -36,7 +36,7 @@ public final class Node implements Serializable, MemoNode {
 
 	// private final long[] uuid;
 	private final UUID id; // UUID therefore 128bits (2x long)
-	private final String value; // int for length, plus X bytes
+	private final byte[] value; // int for length, plus X bytes
 	private final Date timestamp; // long
 
 	private final UUID[] children; // int for no.children, per child: 2x long
@@ -55,7 +55,7 @@ public final class Node implements Serializable, MemoNode {
 		return new Unode(result);
 	}
 	
-	private Node(UUID id, String value, UUID[] children, UUID[] parents) {
+	private Node(UUID id, byte[] value, UUID[] children, UUID[] parents) {
 		this.id = id;
 		this.value = value;
 		this.timestamp = new Date();
@@ -64,15 +64,15 @@ public final class Node implements Serializable, MemoNode {
 		NodeList.store(this);
 	}
 
-	private Node(String value, UUID[] children, UUID[] parents) {
+	private Node(byte[] value, UUID[] children, UUID[] parents) {
 		this(new UUID(), value, children, parents);
 	}
 
-	private Node(UUID id, String value) {
+	private Node(UUID id, byte[] value) {
 		this(id, value, new UUID[0], new UUID[0]);
 	}
 
-	private Node(String value) {
+	private Node(byte[] value) {
 		this(new UUID(), value);
 	}
 
@@ -80,14 +80,37 @@ public final class Node implements Serializable, MemoNode {
 		this(prev.id, prev.value, children, parents);
 	}
 
+	private Node(Node prev, UUID id, byte[] value) {
+		this(id, value, prev.children, prev.parents);
+	}
+
+	private Node(Node prev, byte[] value) {
+		this(prev.id, value, prev.children, prev.parents);
+	}
+
+	private Node(UUID id, String value) {
+		this(id, value.getBytes(), new UUID[0], new UUID[0]);
+	}
+
+	private Node(String value) {
+		this(new UUID(), value.getBytes());
+	}
+
+	private Node(Node prev, String value) {
+		this(prev.id, value.getBytes(), prev.children, prev.parents);
+	}
+
 	private Node(Node prev, UUID id, String value) {
 		this(id, value, prev.children, prev.parents);
 	}
 
-	private Node(Node prev, String value) {
-		this(prev.id, value, prev.children, prev.parents);
+	private Node(String value, UUID[] children, UUID[] parents) {
+		this(new UUID(), value.getBytes(), children, parents);
 	}
 
+	private Node(UUID id, String value, UUID[] children, UUID[] parents) {
+		this(id,value.getBytes(),children,parents);
+	}
 	/*
 	 * We can override the equal and hashCode if we like to be able to say any
 	 * instance of the node is equal to others. Not sure yet if we want that,
@@ -238,7 +261,7 @@ public final class Node implements Serializable, MemoNode {
 	}
 
 	public String getValue() {
-		return value;
+		return new String(value);
 	}
 
 	public Date getTimestamp() {
