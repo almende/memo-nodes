@@ -210,7 +210,7 @@ public class MemoShardStore {
 						if (result.getId().equals(nodeId)) {
 							Date nodeTime = result.getTimestamp();
 							if (nodeTime.after(timestamp)) {
-								if (before == null || nodeTime.before(before)) {
+								if (before == null || nodeTime.before(before) || nodeTime.equals(before)) {
 									MemoShard shard = new MemoShard();
 									shard.index = index;
 									shard.data = data;
@@ -284,6 +284,7 @@ public class MemoShardStore {
 			//System.out.print("(loaded)");
 			return result;
 		}
+		System.out.println("Couldn't find node:"+nodeId);
 		return null;
 	}
 
