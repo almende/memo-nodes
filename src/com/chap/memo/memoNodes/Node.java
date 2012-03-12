@@ -31,6 +31,7 @@ import com.eaio.uuid.UUID;
  * "find" is still required to keep current.
  */
 public final class Node implements Serializable, MemoNode {
+	
 	private static final long serialVersionUID = -214365448207420311L;
 	public static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
 
@@ -453,11 +454,10 @@ public final class Node implements Serializable, MemoNode {
 	}
 	
 	private class StepState{
-		private static final boolean DEBUG = true;
 		
 		private boolean matched = false;
 		public StepState(boolean matched,String reason,MemoQuery query,MemoNode toCompare){
-			if (DEBUG) System.out.println(toCompare.getValue()+"/"+query.value+" -> returning: "+matched+" reason:"+reason);
+			//System.out.println(toCompare.getValue()+"/"+query.value+" -> returning: "+matched+" reason:"+reason);
 			this.setMatched(matched);
 		}
 		public boolean isMatched() {
@@ -470,7 +470,7 @@ public final class Node implements Serializable, MemoNode {
 	
 	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare, ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, ArrayList<MemoNode> patterns, int topX){
 		MemoNode step = query.node;
-		System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
+		//System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
 
 		if (!query.match(toCompare)) return new StepState(false,"Node doesn't match.",query,toCompare);
 		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
@@ -479,8 +479,7 @@ public final class Node implements Serializable, MemoNode {
 				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0)),toCompare,null,new HashSet<MemoNode>(),null,0);
 				if (res.matched){
 					results.add(toCompare);
-					System.out.println("Added result!");
-					return new StepState(true,"Node matches pattern, no need to search deeper.",query,toCompare);
+					return new StepState(true,"Node matches pattern! Added to result, no need to search deeper.",query,toCompare);
 				}
 			}
 		}
