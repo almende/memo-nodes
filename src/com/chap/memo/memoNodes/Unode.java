@@ -172,17 +172,17 @@ public class Unode implements MemoNode {
 		return this;
 	}
 
-	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,
+	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
 			ArrayList<MemoNode> patterns, int topx) {
 		return myNode.search(preambles, patterns, topx);
 	}
 
-	public ArrayList<MemoResult> search(MemoNode preamble, MemoNode pattern,
+	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
 			int topx) {
 		return myNode.search(preamble, pattern, topx);
 	}
 
-	public ArrayList<MemoResult> search(MemoNode algorithm, int topx) {
+	public ArrayList<MemoNode> search(MemoNode algorithm, int topx) {
 		ArrayList<MemoNode> preambles = algorithm.getChildrenByValue(
 				"PreAmble", -1);
 		ArrayList<MemoNode> patterns = algorithm.getChildrenByValue("Pattern",

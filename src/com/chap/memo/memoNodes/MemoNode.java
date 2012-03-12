@@ -59,13 +59,13 @@ public interface MemoNode {
 
 	public MemoNode setPropertyValue(String propName, String propValue);
 
-	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,
+	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
 			ArrayList<MemoNode> patterns, int topx);
 
-	public ArrayList<MemoResult> search(MemoNode preamble, MemoNode pattern,
+	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
 			int topx);
 
-	public ArrayList<MemoResult> search(MemoNode algorithm, int topx);
+	public ArrayList<MemoNode> search(MemoNode algorithm, int topx);
 	
 	public String toJSON(String result, int depth);
 }

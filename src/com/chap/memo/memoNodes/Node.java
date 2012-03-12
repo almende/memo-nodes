@@ -5,11 +5,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
 import com.eaio.uuid.UUID;
-
 
 /* Node is completely immutable, meaning any change creates a new node
  * This leads to guaranteed consistency of the stored version, it will never change for the 
@@ -46,15 +46,15 @@ public final class Node implements Serializable, MemoNode {
 		return this;
 	}
 
-	public static MemoNode getRootNode(){
+	public static MemoNode getRootNode() {
 		Node result = NodeList.find(ROOT);
-		if (result == null){
-			result = new Node(ROOT,"root");
+		if (result == null) {
+			result = new Node(ROOT, "root");
 			NodeList.store(result);
 		}
 		return new Unode(result);
 	}
-	
+
 	private Node(UUID id, byte[] value, UUID[] children, UUID[] parents) {
 		this.id = id;
 		this.value = value;
@@ -109,8 +109,9 @@ public final class Node implements Serializable, MemoNode {
 	}
 
 	private Node(UUID id, String value, UUID[] children, UUID[] parents) {
-		this(id,value.getBytes(),children,parents);
+		this(id, value.getBytes(), children, parents);
 	}
+
 	/*
 	 * We can override the equal and hashCode if we like to be able to say any
 	 * instance of the node is equal to others. Not sure yet if we want that,
@@ -450,151 +451,91 @@ public final class Node implements Serializable, MemoNode {
 			return this;
 		}
 	}
+	
+	private class StepState{
+		private static final boolean DEBUG = true;
+		
+		private boolean matched = false;
+		public StepState(boolean matched,String reason,MemoQuery query,MemoNode toCompare){
+			if (DEBUG) System.out.println(toCompare.getValue()+"/"+query.value+" -> returning: "+matched+" reason:"+reason);
+			this.setMatched(matched);
+		}
+		public boolean isMatched() {
+			return matched;
+		}
+		public void setMatched(boolean matched) {
+			this.matched = matched;
+		}
+	}
+	
+	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare, ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, ArrayList<MemoNode> patterns, int topX){
+		MemoNode step = query.node;
+		System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
 
-	private ArrayList<MemoNode> doPatternStep(MemoNode step, MemoNode toCompare) {
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>();
+		if (!query.match(toCompare)) return new StepState(false,"Node doesn't match.",query,toCompare);
+		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
+		if (preamble) {
+			for (MemoNode pattern : patterns){
+				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0)),toCompare,null,new HashSet<MemoNode>(),null,0);
+				if (res.matched){
+					results.add(toCompare);
+					System.out.println("Added result!");
+					return new StepState(true,"Node matches pattern, no need to search deeper.",query,toCompare);
+				}
+			}
+		}
+		seenNodes.add(toCompare);
+		
 		ArrayList<MemoNode> nextPats = step.getChildren();
 		int toMatchNo = nextPats.size();
-		if (toMatchNo == 0) {
-			// End of pattern, always correct.
-			result.add(toCompare);
-			return result;
-		}
-		ArrayList<MemoNode> children = toCompare.getChildren();
-		if (children.size() < toMatchNo) {
-			// Will never match, early out
-			return result;
-		}
-
+		if (toMatchNo == 0) return new StepState(true,"End of pattern",query,toCompare);
+		
+		ArrayList<MemoNode> children = toCompare.getChildren();		
+		if (!preamble && children.size() < toMatchNo) return new StepState(false,"Too little children for pattern",query,toCompare);
+		
 		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
+		HashSet<MemoQuery> foundQueries = new HashSet<MemoQuery>(toMatchNo);
 		for (MemoNode nextPat : nextPats) {
 			queries.add(MemoQuery.parseQuery(nextPat));
 		}
 		MemoQuery[] queryArray = { new MemoQuery() };
 		queryArray = queries.toArray(queryArray);
 		Arrays.sort(queryArray);
-
-		// int count=0;
+		
 		for (MemoNode child : children) {
-			// count++;
-			boolean found = false;
-			// Compare each child, at least one pattern path needs to match
-			for (MemoQuery query : queryArray) {
-				if (query.match(child)) {
-					ArrayList<MemoNode> subRes = doPatternStep(query.node,
-							child);
-					if (subRes.size() > 0) {
-						result.addAll(subRes);
-						toMatchNo--;
-						found = true;
-					}
-				}
-				if (found)
-					break;
-			}
-			if (toMatchNo <= 0) {
-				// Allready found, early out.
-				break;
+			for (MemoQuery iQuery : queryArray) {
+				if (foundQueries.contains(iQuery)) continue;
+				StepState res = doStep(preamble,iQuery,child,results,seenNodes,patterns,topX);
+				
+				if (topX > 0 && results.size() >= topX) return new StepState(true,"TopX results reached, returning!",query,toCompare);
+				if (preamble || !res.isMatched()) continue;
+				//Return on fully matched pattern
+				foundQueries.add(iQuery);
+				if (foundQueries.size() == queryArray.length) return new StepState(true,"Pattern fully matched",query,toCompare);
 			}
 		}
-		if (toMatchNo > 0) {
-			return new ArrayList<MemoNode>(); // Not all patterns were matched!
-		}
-		if (result.size() > 0) {
-			result.add(0, toCompare);
-		}
-		return result;
+		if (preamble) return new StepState(true,"preamble return.",query,toCompare);
+		return new StepState(false,"Pattern didn't match entirely.",query,toCompare);
 	}
 
-	private ArrayList<MemoResult> doPreAmbleStep(MemoNode step,
-			MemoNode toCompare, ArrayList<MemoNode> patterns,
-			ArrayList<MemoNode> path, ArrayList<MemoResult> allResults, int topx) {
-		ArrayList<MemoResult> result = new ArrayList<MemoResult>();
-		if (path.contains(toCompare)) {
-			// Loop detected!
-			return result;
-		}
-		for (MemoResult earlier : allResults) {
-			if (earlier.match.contains(toCompare)) {
-				// multipath route detected
-				return result;
-			}
-		}
-		// First check if current Node matches any of the patterns, if it does,
-		// don't go deeper, just return the match.
-		for (MemoNode pattern : patterns) {
-			ArrayList<MemoNode> ret = doPatternStep(pattern.getRealNode(),
-					toCompare.getRealNode());
-			if (ret.size() > 0) {
-				MemoNode patternRoot = ret.get(1);
-				ret.addAll(0, path);
-				result.add(new MemoResult(patternRoot, ret));
-				allResults.addAll(result);
-				return result;
-			}
-		}
-		path.add(toCompare);
-		ArrayList<MemoNode> nextPats = step.getChildren();
-		int toMatchNo = nextPats.size();
-		if (toMatchNo == 0) {
-			// End of pattern, always correct.
-		}
-		ArrayList<MemoNode> children = toCompare.getChildren();
-		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
-		for (MemoNode nextPat : nextPats) {
-			queries.add(MemoQuery.parseQuery(nextPat));
-		}
-		MemoQuery[] queryArray = { new MemoQuery() };
-		queryArray = queries.toArray(queryArray);
-		Arrays.sort(queryArray);
-
-		for (MemoNode child : children) {
-			boolean found = false;
-			// Compare each child, at least one pattern path needs to match
-			for (MemoQuery query : queryArray) {
-				if (query.match(child)) {
-					ArrayList<MemoResult> subRes = doPreAmbleStep(query.node,
-							child, patterns, path, allResults, topx);
-					if (subRes.size() > 0) {
-						result.addAll(subRes);
-						found = true;
-					}
-				}
-				if (found)
-					break;
-			}
-			if (topx > 0 && allResults.size() >= topx)
-				break;
-		}
-		path.remove(toCompare);
-		return result;
-	}
-
-	@SuppressWarnings("unchecked")
-	public ArrayList<MemoResult> search(ArrayList<MemoNode> preambles,
+	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
 			ArrayList<MemoNode> patterns, int topx) {
-		ArrayList<MemoResult> result = null;
 
-		if (topx <= 0) {
-			result = new ArrayList<MemoResult>(Math.min(this.children.length,
-					200));
-		} else {
-			result = new ArrayList<MemoResult>(Math.min(this.children.length,
-					topx));
-		}
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?Math.min(200,topx):200);
+		HashSet<MemoNode> seenNodes = new HashSet<MemoNode>(200);
+		
 		if (patterns.size() <= 0) {
 			System.out.println("Warning, empty algorithm used.");
 			return result;
 		}
+		
 		for (MemoNode preamble : preambles) {
-			result.addAll(doPreAmbleStep(preamble, (MemoNode) this, patterns,
-					new ArrayList<MemoNode>(),
-					(ArrayList<MemoResult>) result.clone(), topx));
+			doStep(true,MemoQuery.parseQuery(preamble.getChildren().get(0)),(MemoNode) this,result,seenNodes,patterns,topx);
 		}
 		return result;
 	}
 
-	public ArrayList<MemoResult> search(MemoNode algorithm, int topx) {
+	public ArrayList<MemoNode> search(MemoNode algorithm, int topx) {
 		ArrayList<MemoNode> preambles = algorithm.getChildrenByValue(
 				"PreAmble", -1);
 		ArrayList<MemoNode> patterns = algorithm.getChildrenByValue("Pattern",
@@ -602,7 +543,7 @@ public final class Node implements Serializable, MemoNode {
 		return this.search(preambles, patterns, topx);
 	}
 
-	public ArrayList<MemoResult> search(MemoNode preamble, MemoNode pattern,
+	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
 			int topx) {
 		ArrayList<MemoNode> preambles = new ArrayList<MemoNode>(1);
 		preambles.add(preamble.getRealNode());
@@ -610,24 +551,30 @@ public final class Node implements Serializable, MemoNode {
 		patterns.add(pattern.getRealNode());
 		return this.search(preambles, patterns, topx);
 	}
-	
-	public String toJSON(String result, int depth){
-		Boolean initial=false;
-		if (result.equals("")) initial=true;
-		
-		if (initial) result="],\"links\":[";
-		
-		ArrayList<MemoNode> children= this.getChildren();
-		if (depth-- > 0){
-			for (MemoNode child : children){
-				result = child.toJSON(result,depth);
-				result += "{\"from\":\""+this.getId().toString()+"\",\"to\":\""+child.getId().toString()+"\"}"+(!initial?",":"");
+
+	public String toJSON(String result, int depth) {
+		Boolean initial = false;
+		if (result.equals(""))
+			initial = true;
+
+		if (initial)
+			result = "],\"links\":[";
+
+		ArrayList<MemoNode> children = this.getChildren();
+		if (depth-- > 0) {
+			for (MemoNode child : children) {
+				result = child.toJSON(result, depth);
+				result += "{\"from\":\"" + this.getId().toString()
+						+ "\",\"to\":\"" + child.getId().toString() + "\"}"
+						+ (!initial ? "," : "");
 			}
 		}
-		result = (!initial?",":"")+"{\"id\":\""+this.getId().toString()+"\",\"title\":\""+this.getValue()+"\"}"+result;
-		
-		if (initial) result="{\"nodes\":["+result+"]}";	
-		
+		result = (!initial ? "," : "") + "{\"id\":\"" + this.getId().toString()
+				+ "\",\"title\":\"" + this.getValue() + "\"}" + result;
+
+		if (initial)
+			result = "{\"nodes\":[" + result + "]}";
+
 		return result;
 	}
 }

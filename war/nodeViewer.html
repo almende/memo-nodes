@@ -21,6 +21,9 @@
 								json = JSON.parse(responseText);
 							}
 							if(json != null && json.nodes != null && json.links != null) {
+								if (json.nodes.length < 50){
+									json.nodes.map(function(node){ node.text=node.title });
+								}
 								var network = new links.Network(document.getElementById('myNodeView'));
 								network.draw(json.nodes, json.links, options);
 							}
