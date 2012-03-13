@@ -189,7 +189,10 @@ public class Unode implements MemoNode {
 				-1);
 		return myNode.search(preambles, patterns, topx);
 	}
-	public String toJSON(String result, int depth){
-		return myNode.toJSON(result, depth);
+	public String toJSONString(int depth){
+		return myNode.toJSONString(depth);
+	}
+	public JSONTuple toJSON(int depth){
+		return myNode.toJSON(depth);
 	}
 }

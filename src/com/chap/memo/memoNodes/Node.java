@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import net.sf.json.JSONObject;
+
 import com.eaio.uuid.UUID;
 
 /* Node is completely immutable, meaning any change creates a new node
@@ -468,7 +470,10 @@ public final class Node implements Serializable, MemoNode {
 		}
 	}
 	
-	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare, ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, ArrayList<MemoNode> patterns, int topX){
+	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare,
+						     ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, 
+						     ArrayList<MemoNode> patterns, int topX){
+		
 		MemoNode step = query.node;
 		//System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
 
@@ -476,7 +481,8 @@ public final class Node implements Serializable, MemoNode {
 		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
 		if (preamble) {
 			for (MemoNode pattern : patterns){
-				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0)),toCompare,null,new HashSet<MemoNode>(),null,0);
+				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0)),
+									   toCompare,null,new HashSet<MemoNode>(),null,0);
 				if (res.matched){
 					results.add(toCompare);
 					return new StepState(true,"Node matches pattern! Added to result, no need to search deeper.",query,toCompare);
@@ -551,28 +557,31 @@ public final class Node implements Serializable, MemoNode {
 		return this.search(preambles, patterns, topx);
 	}
 
-	public String toJSON(String result, int depth) {
-		Boolean initial = false;
-		if (result.equals(""))
-			initial = true;
+	public String toJSONString(int depth){
+		JSONTuple tuple = this.toJSON(depth);
+		JSONObject result = new JSONObject().
+							element("nodes", tuple.nodes).
+							element("links",tuple.links);
+		return result.toString();
+	}
 
-		if (initial)
-			result = "],\"links\":[";
-
+	public JSONTuple toJSON(int depth) {
+		JSONTuple result = new JSONTuple();
+		
 		ArrayList<MemoNode> children = this.getChildren();
 		if (depth-- > 0) {
 			for (MemoNode child : children) {
-				result = child.toJSON(result, depth);
-				result += "{\"from\":\"" + this.getId().toString()
-						+ "\",\"to\":\"" + child.getId().toString() + "\"}"
-						+ (!initial ? "," : "");
+				result = result.merge(child.toJSON(depth));
+				result.links.add(
+						new JSONObject().
+						element("from", this.getId().toString()).
+						element("to",child.getId().toString()));
 			}
 		}
-		result = (!initial ? "," : "") + "{\"id\":\"" + this.getId().toString()
-				+ "\",\"title\":\"" + this.getValue() + "\"}" + result;
 
-		if (initial)
-			result = "{\"nodes\":[" + result + "]}";
+		result.nodes.add(new JSONObject().
+						 element("id",this.getId().toString()).
+						 element("title", this.getValue()));
 
 		return result;
 	}

@@ -35,7 +35,7 @@ public class JsonExport extends HttpServlet {
 				MemoNode node = NodeList.find(new UUID(NodeId));
 				resp.setContentType("application/json");
 				resp.getWriter().println(
-						node.toJSON("", maxdepth)
+						node.toJSONString(maxdepth)
 				);
 			}
 		} catch (Exception e){

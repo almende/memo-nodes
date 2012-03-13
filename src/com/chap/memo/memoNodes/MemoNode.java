@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
 
+import net.sf.json.JSONArray;
 import com.eaio.uuid.UUID;
 
 public interface MemoNode {
@@ -67,5 +68,7 @@ public interface MemoNode {
 
 	public ArrayList<MemoNode> search(MemoNode algorithm, int topx);
 	
-	public String toJSON(String result, int depth);
+	public String toJSONString(int depth);
+	
+	public JSONTuple toJSON(int depth);
 }
