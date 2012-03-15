@@ -31,6 +31,14 @@ public class Unode implements MemoNode {
 		this.myNode = myNode.getRealNode();
 	}
 
+	public static MemoNode store(String value) {
+		return new Unode(Node.store(value));
+	}
+
+	public static MemoNode store(UUID id, String value) {
+		return new Unode(Node.store(id, value));
+	}
+	
 	public Node getRealNode() {
 		return myNode;
 	}
@@ -72,8 +80,7 @@ public class Unode implements MemoNode {
 		Arc arc = myNode.addParent(parent.getRealNode(), doOther);
 		myNode = arc.child;
 		if (myNode == null)
-			System.out
-					.println("Error, actuatedNode going to null, addParent - bool");
+			System.out.println("Error, actuatedNode going to null, addParent - bool");
 		return arc;
 	}
 
@@ -82,8 +89,7 @@ public class Unode implements MemoNode {
 		Arc arc = myNode.addChild(child.getRealNode(), doOther);
 		myNode = arc.parent;
 		if (myNode == null)
-			System.out
-					.println("Error, actuatedNode going to null, addChild - bool");
+			System.out.println("Error, actuatedNode going to null, addChild - bool");
 		return arc;
 	}
 
