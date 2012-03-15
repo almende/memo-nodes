@@ -11,7 +11,7 @@ import com.eaio.uuid.UUID;
  * This file acts like a simple compile-time switchboard between storage models. 
  * Two models are available at this time: In memory only (localNodeList) and datastore backed.
  */
-final class NodeList {
+public final class NodeList {
 	static NodeListIntf inMemoryList = new LocalNodeList();
 	static NodeListIntf dataStoreList = new datastoreNodeList();
 	static NodeListIntf nodeList = inMemoryList;

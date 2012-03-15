@@ -49,12 +49,17 @@ public class MemoShardStore {
 			.synchronizedMap(new MyMap<Key, MemoShard>(NOFSHARDS, new Float(
 					0.5), true));
 	
+	static public void flush(){
+		storeShard(currentShard);
+	}
+	
 	static protected void storeShard(MemoShard shard) {
-		// What if stored before? Get old key from index! Should actually never
-		// happen, due to immutable nature of nodes
+		// What if stored before? Get old key from index! Happens on multiple flushes for the currentShard.
 		Entity shardEntity;
+		boolean storedBefore= false;
 		if (shard.index.shardKey != null) {
 			shardEntity = new Entity(shard.index.shardKey);
+			storedBefore= true;
 		} else {
 			shardEntity = new Entity("MemoShardData");
 		}
@@ -76,9 +81,10 @@ public class MemoShardStore {
 		shardIndex.setProperty("index", new Blob(shard.index.serialize()));
 		datastore.put(shardIndex);
 		shard.index.myKey = shardIndex.getKey();
-		rootIndex = rootIndex.addIndex(shard.index);
-		storeRootIndex();//Required, or else we miss on newest shards
-		//System.out.println("Stored: "+shardKey+" -> "+shardIndex.getKey());
+		if (!storedBefore){
+			rootIndex = rootIndex.addIndex(shard.index);
+			storeRootIndex();//Required, or else we miss on newest shards
+		}
 	}
 
 	static protected void storeIndex(MemoIndex index) {
@@ -127,14 +133,22 @@ public class MemoShardStore {
 		Query q = new Query("rootIndex");
 		PreparedQuery pq = datastore.prepare(q);
 		ArrayList<MemoIndex> result = new ArrayList<MemoIndex>(pq.countEntities());
+		ArrayList<Key> toDelete = new ArrayList<Key>(1);
+		
 		Iterator<Entity> iter = pq.asIterator();
 		while (iter.hasNext()) {
 			Entity ent = iter.next();
 			byte[] data = ((Blob) ent.getProperty("index")).getBytes();
 			MemoIndex idx = MemoIndex.unserialize(data);
+			if (idx == null || idx.firstTime == null){
+				System.out.println("Warning: invalid index found! (Deleting it from the datastore)");
+				toDelete.add(ent.getKey());
+				continue;
+			}
 			idx.myKey = ent.getKey();
 			result.add(idx);
 		}
+		datastore.delete(toDelete);
 		Collections.sort(result);
 		/*
 		for (MemoIndex idx: result){
@@ -329,7 +343,7 @@ class MyMap<K, V> extends LinkedHashMap<K, V> {
 class MemoShard {
 	MemoShardData data = new MemoShardData();
 	MemoShardIndex index = new MemoShardIndex();
-
+	
 	public synchronized void addNode(Node node) {
 		this.data.store(node);
 		this.index.addNode(node);
@@ -488,6 +502,10 @@ class MemoIndex extends MemoStorable implements Comparable<MemoIndex> {
 
 	@Override
 	public int compareTo(MemoIndex o) {
+		if (this.firstTime == null || o.firstTime == null){
+			System.out.println("Warning, invalid index found:"+this.myKey+","+this.firstTime+" - "+o.myKey+","+o.firstTime);
+			return -1;
+		}
 		return -1 * (this.firstTime.compareTo(o.firstTime));
 	}
 }
