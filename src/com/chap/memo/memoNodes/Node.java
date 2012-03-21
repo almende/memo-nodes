@@ -37,13 +37,12 @@ public final class Node implements Serializable, MemoNode {
 	private static final long serialVersionUID = -214365448207420311L;
 	public static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
 
-	// private final long[] uuid;
-	private final UUID id; // UUID therefore 128bits (2x long)
-	private final byte[] value; // int for length, plus X bytes
-	private final Date timestamp; // long
+	private final UUID id;
+	private final byte[] value;
+	private final long timestamp;
 
-	private final UUID[] children; // int for no.children, per child: 2x long
-	private final UUID[] parents; // int for no.parents, per parent: 2x long
+	private final UUID[] children;
+	private final UUID[] parents;
 
 	public Node getRealNode() {
 		return this;
@@ -61,12 +60,12 @@ public final class Node implements Serializable, MemoNode {
 	private Node(UUID id, byte[] value, UUID[] children, UUID[] parents) {
 		this.id = id;
 		this.value = value;
-		this.timestamp = new Date();
+		this.timestamp = new Date().getTime();
 		this.children = children;
 		this.parents = parents;
 		NodeList.store(this);
 	}
-
+	
 	private Node(byte[] value, UUID[] children, UUID[] parents) {
 		this(new UUID(), value, children, parents);
 	}
@@ -218,7 +217,7 @@ public final class Node implements Serializable, MemoNode {
 	}
 
 	public Node bulkDelChildren(ArrayList<MemoNode> children) {
-		List<UUID> result = Arrays.asList(this.children);
+		List<UUID> result = new ArrayList<UUID>(Arrays.asList(this.children));
 		for (MemoNode node : children) {
 			if (result.remove(node.getId()))
 				node.delParent(this, false);
@@ -227,7 +226,7 @@ public final class Node implements Serializable, MemoNode {
 	}
 
 	public Node bulkDelParents(ArrayList<MemoNode> parents) {
-		List<UUID> result = Arrays.asList(this.parents);
+		List<UUID> result = new ArrayList<UUID>(Arrays.asList(this.parents));
 		for (MemoNode node : parents) {
 			if (result.remove(node.getId()))
 				node.delChild(this, false);
@@ -269,7 +268,7 @@ public final class Node implements Serializable, MemoNode {
 	}
 
 	public Date getTimestamp() {
-		return timestamp;
+		return new Date(timestamp);
 	}
 
 	public Arc addChild(MemoNode child, boolean doOther) {

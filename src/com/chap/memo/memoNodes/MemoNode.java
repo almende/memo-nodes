@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
 
-import net.sf.json.JSONArray;
 import com.eaio.uuid.UUID;
 
 public interface MemoNode {

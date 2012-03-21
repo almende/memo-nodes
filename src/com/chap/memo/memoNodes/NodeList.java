@@ -100,12 +100,10 @@ final class LocalNodeList implements NodeListIntf {
 			boolean found = false;
 			for (int i = 0; i < size; i++) {
 				Date comp = cur.get(i).getTimestamp();
-				if (node.getTimestamp().equals(comp)
-						|| comp.before(node.getTimestamp())) {
-					cur.add(i, node);
-					found = true;
-					break;
-				}
+				if (comp.before(node.getTimestamp()))continue;
+				cur.add(i,node);
+				found = true;
+				break;
 			}
 			if (!found) {
 				cur.add(node);
