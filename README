@@ -1,9 +1,10 @@
-EVE
-
-Eve is a multipurpose, web based agent platform. The project aims to develop 
-an open protocol for communication between software agents. Eve is designed as 
-a decentral, scalable system for autonomously acting agents. Eve uses the 
-existing world wide web as platform, and uses existing protocols for data 
-exchange (HTTP) and for messaging (JSON-RPC).
-
-Documentation is available on http://almende.github.com/eve
+MemoNodes
+        
+		MemoNodes is a multipurpose, graph-based data store/database implementation, 
+		which is independent of the underlying storage technology used. 
+		With the project, an in-memory and a Google cloud-based database implementation is delivered.
+		Communication with this Associative Memory, which store data and logic, can be done 
+		via HTTP, using messaging protocol JSON-RPC. The data exchanged with MemoNodes is conforming 
+		to JSON 2.0 format.
+		
+		More detailed documentation is available on http://almende.github.com/MemoNodes
