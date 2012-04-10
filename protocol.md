@@ -32,15 +32,15 @@ Requester (which can be an agent or a human) performs a request to MemoNodes.
 
 <table class="example" summary="Asynchronous request 1/2">
 <tr>
-<th class="example">Url</th><td class="example"><pre class="example">http://myserver.com/agent/Y</pre></td>
+<th class="example">Url</th><td class="example"><pre class="example">http://myserver.com/memo/Y</pre></td>
 </tr>
 <tr>
 <th class="example">Request</th><td class="example"><pre class="example">{ 
   "id": 1,
-  "method": "add",
+  "method": "add_domain",
   "params": {
-    "a": 2.2, 
-    "b": 4.5
+    "domain": "Questionnaire", 
+    "namespace": "http://questionnaire.com/domain/ns:questionnaire"
   },
   "callback": {
     "url": "http://myserver.com/agentX",
@@ -69,7 +69,7 @@ via a new request, adressing the callback url and method of agent X:
   "id": 1,
   "method": "addCallback",
   "params": {
-    "result: 6.7,
+    "result: "domain(Questionnaire, http://questionnaire.com/domain/ns:questionnaire)",
     "error": null
   }
 }</pre></td>
