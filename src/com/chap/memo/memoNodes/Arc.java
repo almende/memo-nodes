@@ -1,6 +1,6 @@
 package com.chap.memo.memoNodes;
 
-public class Arc {
+final public class Arc {
 	public Node parent = null;
 	public Node child = null;
 

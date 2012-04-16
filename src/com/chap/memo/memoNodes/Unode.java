@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 import com.eaio.uuid.UUID;
 
-public class Unode implements MemoNode {
+final public class Unode implements MemoNode {
 	private Node myNode = null;
 
 	public Unode(Node myNode) {

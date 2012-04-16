@@ -28,7 +28,7 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 
-public class MemoShardStore {
+public final class MemoShardStore {
 	// These can be tweaked to modify performance and memory usage of the
 	// application:
 	protected static final int SHARDSIZE = 40000; // How many entries does a
@@ -38,11 +38,10 @@ public class MemoShardStore {
 	protected static final int NOFINDEXES = 25; // How many entries does a
 												// MemoGroupIndex hold
 
-	protected static UUID INSTANCEID = new UUID();
-
 	static DatastoreService datastore = DatastoreServiceFactory
 			.getDatastoreService();
 	static MemoShard currentShard = new MemoShard();
+	static int currentShardStoredSize = 0;
 
 	static MemoGroupIndex rootIndex = new MemoGroupIndex();
 	static Map<Key, MemoShard> shards = Collections
@@ -50,10 +49,41 @@ public class MemoShardStore {
 					0.5), true));
 	
 	static public void flush(){
+		if (currentShardStoredSize == currentShard.index.nodeids.size()) return;  //Hasn't changed, no need to store!
 		storeShard(currentShard);
+		currentShardStoredSize=currentShard.index.nodeids.size();
+	}
+	
+	static protected void syncShards(MemoShard left, MemoShard right){
+		//sanity check
+		if (left.index.firstTime < right.index.lastTime || right.index.firstTime > left.index.lastTime){
+			System.out.println("Syncing non-overlapping Shards?");
+			return;
+		}
+		@SuppressWarnings("unchecked")
+		HashSet<UUID> leftIds = (HashSet<UUID>) left.index.nodeids.clone();
+		leftIds.retainAll(right.index.nodeids);
+		if (leftIds.size() > 0){
+			if (left.data == null) left.data = loadShardData(left.index.shardKey);
+			if (right.data == null) right.data = loadShardData(right.index.shardKey);
+			
+			Iterator<UUID> iter = leftIds.iterator();
+			while (iter.hasNext()){
+				UUID id = iter.next();
+				ArrayList<Node> leftNodes = left.data.knownNodes.get(id);
+				ArrayList<Node> rightNodes = right.data.knownNodes.get(id);
+				Node leftNode = leftNodes.get(leftNodes.size());
+				Node rightNode = rightNodes.get(rightNodes.size());
+				if (leftNode.getChildren().equals(rightNode.getChildren()) &&
+					leftNode.getParents().equals(rightNode.getParents())) continue;
+				
+			}
+		}
 	}
 	
 	static protected void storeShard(MemoShard shard) {
+		//Don't store if empty!
+		if (shard.index.nodeids.size() <= 0) return;
 		// What if stored before? Get old key from index! Happens on multiple flushes for the currentShard.
 		Entity shardEntity;
 		boolean storedBefore= false;
@@ -66,8 +96,9 @@ public class MemoShardStore {
 		byte[] data = shard.data.serialize();
 		// TODO: What to do if size is too big? Split in multiple Properties?
 		// System.out.println("Storing: "+data.length + " bytes in shard.");
-		shardEntity.setProperty("shard", new Blob(data));
-		shardEntity.setProperty("size", data.length);
+		shardEntity.setUnindexedProperty("shard", new Blob(data));
+		shardEntity.setUnindexedProperty("size", data.length);
+		
 		datastore.put(shardEntity);
 		Key shardKey = shardEntity.getKey();
 
@@ -78,7 +109,7 @@ public class MemoShardStore {
 			shardIndex = new Entity("MemoShardIndex", shardKey);
 		}
 		shard.index.shardKey = shardKey;
-		shardIndex.setProperty("index", new Blob(shard.index.serialize()));
+		shardIndex.setUnindexedProperty("index", new Blob(shard.index.serialize()));
 		datastore.put(shardIndex);
 		shard.index.myKey = shardIndex.getKey();
 		if (!storedBefore){
@@ -94,7 +125,7 @@ public class MemoShardStore {
 		} else {
 			shardIndex = new Entity("MemoIndex");
 		}
-		shardIndex.setProperty("index", new Blob(index.serialize()));
+		shardIndex.setUnindexedProperty("index", new Blob(index.serialize()));
 		datastore.put(shardIndex);
 		index.myKey = shardIndex.getKey();
 		//System.out.println("Stored index:"+index.myKey);
@@ -121,9 +152,7 @@ public class MemoShardStore {
 		} else {
 			shardIndex = new Entity("rootIndex");
 		}
-		shardIndex.setProperty("index", new Blob(rootIndex.serialize()));
-
-		shardIndex.setProperty("InstanceId", INSTANCEID.toString());
+		shardIndex.setUnindexedProperty("index", new Blob(rootIndex.serialize()));
 		datastore.put(shardIndex);
 		rootIndex.myKey = shardIndex.getKey();
 		//System.out.println("Stored rootindex:"+rootIndex.myKey + " with "+rootIndex.subindexes.size() + " elements");
@@ -140,7 +169,7 @@ public class MemoShardStore {
 			Entity ent = iter.next();
 			byte[] data = ((Blob) ent.getProperty("index")).getBytes();
 			MemoIndex idx = MemoIndex.unserialize(data);
-			if (idx == null || idx.firstTime == null){
+			if (idx == null || idx.firstTime == 0){
 				System.out.println("Warning: invalid index found! (Deleting it from the datastore)");
 				toDelete.add(ent.getKey());
 				continue;
@@ -181,19 +210,19 @@ public class MemoShardStore {
 	}
 
 	static protected Node findNewest(ArrayList<IndexKey> list, UUID nodeId,
-			Date timestamp, Date before) {
+			long timestamp, Date before) {
 		Iterator<IndexKey> iter = list.iterator();
 		//System.out.println("Searching through "+list.size()+" items");
 		//int count=0;
 		while (iter.hasNext()) {
 			//count++;
 			IndexKey idxKey = iter.next();
-			if (idxKey.timestamp.before(timestamp)) {
+			if (idxKey.timestamp < timestamp) {
 				//System.out.println("time:"+count+"/"+list.size());
 				return null;
 			}
 			MemoIndex inner = MemoShardStore.loadIndex(idxKey.key);
-			if (before != null && inner.lastTime.after(before)) {
+			if (before != null && inner.lastTime > before.getTime()) {
 				//System.out.println("tooNew:"+count+"/"+list.size());
 				return null;
 			}
@@ -212,9 +241,9 @@ public class MemoShardStore {
 					MemoShardData data = MemoShardStore
 							.loadShardData(index.shardKey);
 					Node result = data.find(nodeId);
-					Date nodeTime = result.getTimestamp();
-					if (nodeTime.after(timestamp)) {
-						if (before == null || nodeTime.before(before) || nodeTime.equals(before)) {
+					long nodeTime = result.getTimestamp().getTime();
+					if (nodeTime > timestamp) {
+						if (before == null || nodeTime < before.getTime() || nodeTime == before.getTime()) {
 							MemoShard shard = new MemoShard();
 							shard.index = index;
 							shard.data = data;
@@ -258,14 +287,14 @@ public class MemoShardStore {
 		}
 		ArrayList<MemoIndex> rootIndexes = MemoShardStore.loadRootIndexes();
 		Node result = null;
-		Date timestamp = new Date(0);
+		long timestamp = 0;
 		for (MemoIndex idx : rootIndexes) { // time ordered list;
-			if (idx.firstTime.after(timestamp)
-					&& (before == null || idx.lastTime.before(before))) {
+			if (idx.firstTime > timestamp
+					&& (before == null || idx.lastTime < before.getTime())) {
 				MemoGroupIndex index = (MemoGroupIndex) idx;
 				result = findNewest(index.subindexes, nodeId, timestamp, before);
 				if (result != null)
-					timestamp = result.getTimestamp();
+					timestamp = result.getTimestamp().getTime();
 			} else {
 				break;
 			}
@@ -314,7 +343,6 @@ public class MemoShardStore {
 		}
 		
 		// Clean out memory, can only cleanup the ones I have reference to.
-		INSTANCEID = new UUID();
 		rootIndex = new MemoGroupIndex();
 		shards.clear();
 		currentShard = new MemoShard();
@@ -340,7 +368,7 @@ class MyMap<K, V> extends LinkedHashMap<K, V> {
 	}
 }
 
-class MemoShard {
+final class MemoShard {
 	MemoShardData data = new MemoShardData();
 	MemoShardIndex index = new MemoShardIndex();
 	
@@ -410,7 +438,7 @@ class MemoStorable implements Serializable {
 	}
 }
 
-class MemoShardData extends MemoStorable {
+final class MemoShardData extends MemoStorable {
 	private static final long serialVersionUID = -5770613002073776843L;
 	HashMap<UUID, ArrayList<Node>> knownNodes = new HashMap<UUID, ArrayList<Node>>(MemoShardStore.SHARDSIZE);
 
@@ -461,12 +489,10 @@ class MemoShardData extends MemoStorable {
 			boolean found = false;
 			for (int i = 0; i < size; i++) {
 				Date comp = cur.get(i).getTimestamp();
-				if (node.getTimestamp().equals(comp)
-						|| comp.before(node.getTimestamp())) {
-					cur.add(i, node);
-					found = true;
-					break;
-				}
+				if (comp.before(node.getTimestamp()))continue;
+				cur.add(i,node);
+				found = true;
+				break;
 			}
 			if (!found) {
 				cur.add(node);
@@ -487,8 +513,8 @@ class MemoShardData extends MemoStorable {
 class MemoIndex extends MemoStorable implements Comparable<MemoIndex> {
 	private static final long serialVersionUID = 8232550041630847696L;
 	Key myKey = null;
-	Date firstTime = null;
-	Date lastTime = null;
+	long firstTime = 0;
+	long lastTime = 0;
 	String type = "generic";
 
 	public static MemoIndex unserialize(byte[] data) {
@@ -502,15 +528,15 @@ class MemoIndex extends MemoStorable implements Comparable<MemoIndex> {
 
 	@Override
 	public int compareTo(MemoIndex o) {
-		if (this.firstTime == null || o.firstTime == null){
+		if (this.firstTime == 0 || o.firstTime == 0){
 			System.out.println("Warning, invalid index found:"+this.myKey+","+this.firstTime+" - "+o.myKey+","+o.firstTime);
 			return -1;
 		}
-		return -1 * (this.firstTime.compareTo(o.firstTime));
+		return (int) ((this.firstTime - o.firstTime)%1);
 	}
 }
 
-class MemoGroupIndex extends MemoIndex {
+final class MemoGroupIndex extends MemoIndex {
 	private static final long serialVersionUID = 2550902839122518068L;
 	ArrayList<IndexKey> subindexes = new ArrayList<IndexKey>(
 			MemoShardStore.NOFINDEXES);
@@ -520,15 +546,15 @@ class MemoGroupIndex extends MemoIndex {
 	}
 
 	public MemoGroupIndex addIndex(MemoIndex index) {
-		if (firstTime == null || firstTime.after(index.firstTime)) {
+		if (firstTime == 0 || firstTime > index.firstTime) {
 			firstTime = index.firstTime;
 		}
-		if (lastTime == null || lastTime.before(index.lastTime)) {
+		if (lastTime == 0 || lastTime < index.lastTime) {
 			lastTime = index.lastTime;
 		}
 		boolean found = false;
 		for (int i = 0; i < this.subindexes.size(); i++) {
-			if (this.subindexes.get(i).timestamp.after(index.firstTime)) {
+			if (this.subindexes.get(i).timestamp > index.firstTime) {
 				this.subindexes.add(i, new IndexKey(index.myKey,
 						index.firstTime));
 				found = true;
@@ -555,7 +581,7 @@ class MemoGroupIndex extends MemoIndex {
 	}
 }
 
-class MemoShardIndex extends MemoIndex {
+final class MemoShardIndex extends MemoIndex {
 	private static final long serialVersionUID = -5770613002073776843L;
 	HashSet<UUID> nodeids = new HashSet<UUID>(MemoShardStore.SHARDSIZE);
 	Key shardKey = null;
@@ -567,11 +593,11 @@ class MemoShardIndex extends MemoIndex {
 	public void addNode(Node node) {
 		this.nodeids.add(node.getId());
 		Date nodeTime = node.getTimestamp();
-		if (firstTime == null || firstTime.before(nodeTime)) {
-			firstTime = nodeTime;
+		if (firstTime == 0 || firstTime < nodeTime.getTime()) {
+			firstTime = nodeTime.getTime();
 		}
-		if (lastTime == null || lastTime.after(nodeTime)) {
-			lastTime = nodeTime;
+		if (lastTime == 0 || lastTime > nodeTime.getTime()) {
+			lastTime = nodeTime.getTime();
 		}
 	}
 
@@ -580,12 +606,12 @@ class MemoShardIndex extends MemoIndex {
 	}
 }
 
-class IndexKey implements Serializable {
+final class IndexKey implements Serializable {
 	private static final long serialVersionUID = -4804333997966989141L;
 	Key key = null;
-	Date timestamp = null;
+	long timestamp = 0;
 
-	public IndexKey(Key key, Date timestamp) {
+	public IndexKey(Key key, long timestamp) {
 		this.key = key;
 		this.timestamp = timestamp;
 	}

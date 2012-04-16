@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.eaio.uuid.UUID;
 
 @SuppressWarnings("serial")
-public class JsonExport extends HttpServlet {
+final public class JsonExport extends HttpServlet {
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
