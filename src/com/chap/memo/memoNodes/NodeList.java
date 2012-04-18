@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import com.chap.memo.memoNodes.NewImpl.MemoWriteBus;
 import com.eaio.uuid.UUID;
 
 /*
@@ -13,7 +14,7 @@ import com.eaio.uuid.UUID;
  */
 public final class NodeList {
 	static NodeListIntf inMemoryList = new LocalNodeList();
-	static NodeListIntf dataStoreList = new datastoreNodeList();
+	static NodeListIntf dataStoreList = new NewNodeList();
 	static NodeListIntf nodeList = inMemoryList;
 	
 	public static void useMemory(){
@@ -117,6 +118,25 @@ final class LocalNodeList implements NodeListIntf {
 
 	public ArrayList<Node> findAll(UUID id) {
 		return knownNodes.get(id);
+	}
+}
+final class NewNodeList implements NodeListIntf {
+	MemoWriteBus out = new MemoWriteBus();
+	
+	public Node find(UUID id) {
+		//TODO
+		return null;
+	}
+	public Node findBefore(UUID id, Date timestamp){
+		//TODO
+		return null;
+	}
+	public ArrayList<Node> findAll(UUID id){
+		//TODO
+		return null;
+	}
+	public void store(Node node) {
+		out.store(node);
 	}
 }
 

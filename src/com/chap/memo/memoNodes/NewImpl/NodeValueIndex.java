@@ -12,14 +12,14 @@ public final class NodeValueIndex extends MemoStorable {
 	Key shardKey;
 	long oldest;
 	long newest;
-	Key myKey;
 	
+	public NodeValueIndex(){};
 	public NodeValueIndex(NodeValueShard shard){
 		nodeIds = shard.nodes.keySet();
 		shardKey = shard.store("NodeValueShard");
 		oldest = shard.oldest;
 		newest = shard.newest;
-		myKey = this.store("NodeValueIndex");
+		this.store("NodeValueIndex");
 	}
 	public static NodeValueIndex load(Key key){
 		return (NodeValueIndex) MemoStorable.load(key);

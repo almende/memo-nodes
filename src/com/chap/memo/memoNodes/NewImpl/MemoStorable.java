@@ -21,6 +21,7 @@ import com.google.appengine.api.datastore.Key;
 abstract class MemoStorable implements Serializable {
 	private static final long serialVersionUID = -5770613002073776843L;
 	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+	Key myKey = null;
 	
 	private byte[] serialize() {
 		byte[] result = null;
@@ -75,7 +76,8 @@ abstract class MemoStorable implements Serializable {
 		ent.setUnindexedProperty("payload", new Blob(Arrays.copyOfRange(data, pointer, length)));
 		if (next != null) ent.setUnindexedProperty("next",next);
 		datastore.put(ent);
-		return ent.getKey();
+		myKey = ent.getKey();
+		return myKey;
 	}
 	
     //Factory methods:
@@ -100,7 +102,9 @@ abstract class MemoStorable implements Serializable {
 			e.printStackTrace();
 			return null;
 		}
-		return _unserialize(result);
+		MemoStorable res = _unserialize(result);
+		res.myKey = key;
+		return res;
 	}
 	
 	private static MemoStorable _unserialize(byte[] data) {
@@ -124,6 +128,21 @@ abstract class MemoStorable implements Serializable {
 			e.printStackTrace();
 		}
 		return result;
+	}
+	
+	public void delete(){
+		if (myKey != null) delete(myKey);
+	}
+	private void delete(Key key){
+		try {
+			Entity ent = datastore.get(key);
+			if (ent.hasProperty("next")){
+				delete((Key)ent.getProperty("next")); //recurse
+			}
+			datastore.delete(key);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	//Tools:
