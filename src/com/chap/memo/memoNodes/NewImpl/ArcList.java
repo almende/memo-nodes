@@ -11,8 +11,8 @@ public class ArcList {
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
 	long lastUpdate = 0;
 	
-	UUID[] nodes;
-	ArrayList<ArcOp> arcops;
+	UUID[] nodes = new UUID[0];
+	ArrayList<ArcOp> arcops = new ArrayList<ArcOp>(100);
 	int type; //0: parent list, 1:child list
 	UUID nodeId;
 	
@@ -74,7 +74,7 @@ public class ArcList {
 		ops2nodes();
 	}
 	private void ops2nodes(){
-		HashSet<UUID> nodeList = new HashSet<UUID>(this.nodes.length+5);
+		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
 		for (ArcOp op : arcops){
 			switch(op.getType()){
 			case ADD:
@@ -85,6 +85,8 @@ public class ArcList {
 				break;
 			}
 		}
-		this.timestamp = arcops.get(arcops.size()).getTimestamp_long();
+		if (arcops.size()>0){
+			this.timestamp = arcops.get(arcops.size()-1).getTimestamp_long();
+		}
 	}
 }

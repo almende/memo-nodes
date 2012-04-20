@@ -1,5 +1,6 @@
 package com.chap.memo.memoNodes.NewImpl;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import com.eaio.uuid.UUID;
@@ -15,7 +16,7 @@ public final class NodeValueIndex extends MemoStorable {
 	
 	public NodeValueIndex(){};
 	public NodeValueIndex(NodeValueShard shard){
-		nodeIds = shard.nodes.keySet();
+		nodeIds = new HashSet<UUID>(shard.nodes.keySet());
 		shardKey = shard.store("NodeValueShard",shard.newest);
 		oldest = shard.oldest;
 		newest = shard.newest;

@@ -16,8 +16,8 @@ public class MemoNode {
 	long lastUpdate= new Date().getTime();
 	
 	private NodeValue value;
-	private ArcList parents = new ArcList(this.getId(),0);
-	private ArcList children = new ArcList(this.getId(),1);
+	private final ArcList parents;
+	private final ArcList children;
 	
 	public MemoNode(NodeValue value, ArcList parents, ArcList children){
 		this.value=value;
@@ -26,6 +26,8 @@ public class MemoNode {
 	}
 	public MemoNode(UUID id, byte[] value, UUID[] children, UUID[] parents){
 		this.value=writeBus.store(id, value);
+		this.parents=new ArcList(id,0);
+		this.children=new ArcList(id,1);
 		for (UUID child: children){
 			this.addChild(child);
 		}
@@ -35,9 +37,18 @@ public class MemoNode {
 	}
 	public MemoNode(NodeValue value){
 		this.value=value;		
+		this.parents=new ArcList(value.getId(),0);
+		this.children=new ArcList(value.getId(),1);
 	}
 	public MemoNode(byte[] value){
-		this.value=writeBus.store(new UUID(), value);		
+		this.value=writeBus.store(new UUID(), value);
+		this.parents=new ArcList(this.value.getId(),0);
+		this.children=new ArcList(this.value.getId(),1);
+	}
+	public MemoNode(String value){
+		this.value=writeBus.store(new UUID(), value.getBytes());		
+		this.parents=new ArcList(this.value.getId(),0);
+		this.children=new ArcList(this.value.getId(),1);
 	}
 	public void update(byte[] value){
 		this.value=writeBus.store(this.value.getId(), value);
@@ -71,7 +82,7 @@ public class MemoNode {
 	}
 	public ArrayList<MemoNode> history(){
 		ArrayList<MemoNode> result = readBus.findAll(getId());
-		if (!result.get(result.size()).equals(this)){
+		if (!result.get(result.size()-1).equals(this)){
 			result.add(this);	
 		}
 		return result;

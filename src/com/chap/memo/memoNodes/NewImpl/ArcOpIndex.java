@@ -1,7 +1,7 @@
 package com.chap.memo.memoNodes.NewImpl;
 
 import java.util.Set;
-
+import java.util.HashSet;
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.Key;
 
@@ -14,8 +14,8 @@ public final class ArcOpIndex extends MemoStorable {
 	
 	public ArcOpIndex(){}
 	public ArcOpIndex(ArcOpShard ops){
-		parents = ops.parents.keySet();
-		children = ops.children.keySet();
+		parents = new HashSet<UUID>(ops.parents.keySet());
+		children = new HashSet<UUID>(ops.children.keySet());
 		shardKey = ops.store("ArcOpShard");
 		this.store("ArcOpIndex");
 	}
