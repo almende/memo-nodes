@@ -70,19 +70,19 @@ abstract class MemoStorable implements Serializable {
 		}
 	}
 	public Key store(String type){
-		return store(null,type,new Date());
+		return store(null,type,new Date().getTime());
 	}
-	public Key store(String type,Date storeDate){
+	public Key store(String type,long storeDate){
 		return store(null,type,storeDate);
 	}
 	public Key store(Key orig,String type){
-		return store(orig,type,new Date());
+		return store(orig,type,new Date().getTime());
 	}
-	public Key store(Key orig,String type,Date storeDate){
+	public Key store(Key orig,String type,long storeDate){
 		final int MAXSIZE=1000000;
 		Entity ent;
 		Key next = null;
-		this.storeTime = storeDate.getTime();
+		this.storeTime = storeDate;
 		
 		byte[] data = this.serialize();
 		int length = data.length;
@@ -111,7 +111,7 @@ abstract class MemoStorable implements Serializable {
 	}
 	
     //Factory methods:
-	protected static MemoStorable load(Entity ent){
+	public static MemoStorable load(Entity ent){
 		byte[] result;
 		Key key = ent.getKey();
 		try {

@@ -1,17 +1,15 @@
 package com.chap.memo.memoNodes.NewImpl;
 
-import java.util.Date;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 
 import com.eaio.uuid.UUID;
 
 public class ArcList {
 	MemoReadBus readBus = MemoReadBus.getBus();
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
-	long lastUpdate = new Date().getTime();
+	long lastUpdate = 0;
 	
 	UUID[] nodes;
 	ArrayList<ArcOp> arcops;
@@ -24,21 +22,30 @@ public class ArcList {
 		this.type=type;
 		this.nodeId=nodeId;
 	}
+	//TODO: get ArcList @timestamp, don't update!
 	
 	public long getTimestamp_long(){
 		return this.timestamp;
 	}
-	
+	public ArrayList<MemoNode> getNodes(long timestamp){
+		this.arcops=readBus.getOps(nodeId,type,timestamp);
+		ops2nodes();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
+				this.nodes.length);
+		for (UUID id : this.nodes) {
+			result.add(readBus.find(id));
+		}
+		return result;
+	}
 	public ArrayList<MemoNode> getNodes(){
 		if (readBus.valueChanged(lastUpdate)){
-			readBus.getOps(nodeId);
+			this.arcops=readBus.getOps(nodeId,type);
 			ops2nodes();
 			lastUpdate=new Date().getTime();
 		}
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
 				this.nodes.length);
-		List<UUID> parents = Arrays.asList(this.nodes);
-		for (UUID id : parents) {
+		for (UUID id : this.nodes) {
 			result.add(readBus.find(id));
 		}
 		return result;	

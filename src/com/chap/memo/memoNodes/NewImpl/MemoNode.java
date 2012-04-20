@@ -33,6 +33,9 @@ public class MemoNode {
 			this.addParent(parent);
 		}
 	}
+	public MemoNode(NodeValue value){
+		this.value=value;		
+	}
 	public MemoNode(byte[] value){
 		this.value=writeBus.store(new UUID(), value);		
 	}

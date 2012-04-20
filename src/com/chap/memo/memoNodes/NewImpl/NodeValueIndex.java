@@ -16,7 +16,7 @@ public final class NodeValueIndex extends MemoStorable {
 	public NodeValueIndex(){};
 	public NodeValueIndex(NodeValueShard shard){
 		nodeIds = shard.nodes.keySet();
-		shardKey = shard.store("NodeValueShard");
+		shardKey = shard.store("NodeValueShard",shard.newest);
 		oldest = shard.oldest;
 		newest = shard.newest;
 		this.store("NodeValueIndex");
