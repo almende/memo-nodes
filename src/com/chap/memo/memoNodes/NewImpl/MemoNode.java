@@ -2,6 +2,7 @@ package com.chap.memo.memoNodes.NewImpl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.regex.Pattern;
@@ -10,32 +11,52 @@ import net.sf.json.JSONObject;
 import com.eaio.uuid.UUID;
 
 public class MemoNode {
-	private NodeValue value;
-	private ArcList parents;
-	private ArcList children;
+	MemoReadBus readBus = MemoReadBus.getBus();
+	MemoWriteBus writeBus = MemoWriteBus.getBus();
+	long lastUpdate= new Date().getTime();
 	
+	private NodeValue value;
+	private ArcList parents = new ArcList(this.getId(),0);
+	private ArcList children = new ArcList(this.getId(),1);
+	
+	public MemoNode(NodeValue value, ArcList parents, ArcList children){
+		this.value=value;
+		this.parents=parents;
+		this.children=children;
+	}
 	public MemoNode(UUID id, byte[] value, UUID[] children, UUID[] parents){
-		//TODO
+		this.value=writeBus.store(id, value);
+		for (UUID child: children){
+			this.addChild(child);
+		}
+		for (UUID parent: parents){
+			this.addParent(parent);
+		}
 	}
 	public MemoNode(byte[] value){
-		//TODO
+		this.value=writeBus.store(new UUID(), value);		
 	}
 	public void update(byte[] value){
-		//TODO
+		this.value=writeBus.store(this.value.getId(), value);
 	}
 	public void addParent(UUID parent){
-		//TODO
+		parents.addNode(parent);
 	}
 	public void addChild(UUID child){
-		//TODO		
+		children.addNode(child);		
 	}
 	public void delParent(UUID parent){
-		//TODO		
+		parents.delNode(parent);
 	}
 	public void delChild(UUID child){
-		//TODO		
+		children.delNode(child);			
 	}
+
 	public byte[] getValue(){
+		if (readBus.valueChanged(lastUpdate)){
+			this.value=readBus.getValue(this.value.getId());
+			lastUpdate=new Date().getTime();
+		}
 		return this.value.getValue();
 	}
 	public String getStringValue(){

@@ -2,6 +2,8 @@ package com.chap.memo.memoNodes.NewImpl;
 
 import java.util.Date;
 
+import com.eaio.uuid.UUID;
+
 public class MemoWriteBus {
 	private final static MemoWriteBus bus= new MemoWriteBus();
 	private MemoWriteBus(){};
@@ -26,32 +28,16 @@ public class MemoWriteBus {
 		ops= new ArcOpShard();
 	}
 	
-	public void store(MemoNode node){
-		values.store(new NodeValue(node.getId(), node.getValue(), node.getTimestamp()));
+	public NodeValue store(UUID id, byte[] value){
+		NodeValue result = new NodeValue(id, value, new Date().getTime());
+		values.store(result);
 		if (values.nodes.size() >= NodeValueShard.SHARDSIZE){
-			flushValues();
+				flushValues();
 		}
+		return result;
 	}
-	public void addChild(MemoNode node, MemoNode child, Date timestamp){
-		ops.store(new ArcOp(Ops.ADD,node.getId(),child.getId(),timestamp));
-		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
-			flushOps();
-		}
-	}
-	public void addParent(MemoNode node, MemoNode parent, Date timestamp){
-		ops.store(new ArcOp(Ops.ADD,parent.getId(),node.getId(),timestamp));
-		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
-			flushOps();
-		}
-	}
-	public void delChild(MemoNode node, MemoNode child, Date timestamp){
-		ops.store(new ArcOp(Ops.DELETE,node.getId(),child.getId(),timestamp));
-		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
-			flushOps();
-		}
-	}
-	public void delParent(MemoNode node, MemoNode parent, Date timestamp){
-		ops.store(new ArcOp(Ops.DELETE,parent.getId(),node.getId(),timestamp));
+	public void store(ArcOp op){
+		ops.store(op);
 		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
 			flushOps();
 		}
