@@ -2,9 +2,13 @@ package com.chap.memo.memoNodes.NewImpl;
 
 import java.util.Date;
 
-import com.chap.memo.memoNodes.MemoNode;
-
 public class MemoWriteBus {
+	private final static MemoWriteBus bus= new MemoWriteBus();
+	private MemoWriteBus(){};
+	
+	public static MemoWriteBus getBus(){
+		return bus;
+	}
 	NodeValueShard values = new NodeValueShard();
 	ArcOpShard ops = new ArcOpShard();
 	
@@ -14,20 +18,16 @@ public class MemoWriteBus {
 	}
 	
 	public void flushValues(){
-		//TODO: check for existing "small" shards, merge. (use as smart clustering as cheaply available)
-		NodeValueIndex valIndex = new NodeValueIndex(values);
-		//TODO: where to leave this index? Generate commit point
+		new NodeValueIndex(values);
 		values= new NodeValueShard();
 	}
 	public void flushOps(){
-		//TODO: check for existing "small" shards, merge.
-		ArcOpIndex opIndex = new ArcOpIndex(ops);
-		//TODO: where to leave this index? Generate commit point 
+		new ArcOpIndex(ops);
 		ops= new ArcOpShard();
 	}
 	
 	public void store(MemoNode node){
-		values.store(new NodeValue(node.getId(), node.getValue().getBytes(), node.getTimestamp()));
+		values.store(new NodeValue(node.getId(), node.getValue(), node.getTimestamp()));
 		if (values.nodes.size() >= NodeValueShard.SHARDSIZE){
 			flushValues();
 		}

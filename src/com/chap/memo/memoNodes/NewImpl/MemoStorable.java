@@ -6,7 +6,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Iterator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -17,11 +20,16 @@ import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.Query.FilterOperator;
+import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 
 abstract class MemoStorable implements Serializable {
 	private static final long serialVersionUID = -5770613002073776843L;
 	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 	Key myKey = null;
+	long storeTime;
 	
 	private byte[] serialize() {
 		byte[] result = null;
@@ -47,13 +55,34 @@ abstract class MemoStorable implements Serializable {
 		}
 		return result;
 	}
+	public void delete(){
+		if (myKey != null) delete(myKey);
+	}
+	private void delete(Key key){
+		try {
+			Entity ent = datastore.get(key);
+			if (ent.hasProperty("next")){
+				delete((Key)ent.getProperty("next")); //recurse
+			}
+			datastore.delete(key);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 	public Key store(String type){
-		return store(null,type);
+		return store(null,type,new Date());
+	}
+	public Key store(String type,Date storeDate){
+		return store(null,type,storeDate);
 	}
 	public Key store(Key orig,String type){
+		return store(orig,type,new Date());
+	}
+	public Key store(Key orig,String type,Date storeDate){
 		final int MAXSIZE=1000000;
 		Entity ent;
 		Key next = null;
+		this.storeTime = storeDate.getTime();
 		
 		byte[] data = this.serialize();
 		int length = data.length;
@@ -75,16 +104,17 @@ abstract class MemoStorable implements Serializable {
 		}
 		ent.setUnindexedProperty("payload", new Blob(Arrays.copyOfRange(data, pointer, length)));
 		if (next != null) ent.setUnindexedProperty("next",next);
+		ent.setProperty("timestamp",this.storeTime);
 		datastore.put(ent);
 		myKey = ent.getKey();
 		return myKey;
 	}
 	
     //Factory methods:
-	protected static MemoStorable load(Key key){
+	protected static MemoStorable load(Entity ent){
 		byte[] result;
+		Key key = ent.getKey();
 		try {
-			Entity ent = datastore.get(key);	
 			Blob blob = (Blob) ent.getProperty("payload");
 			byte[] data=blob.getBytes();
 			result=Arrays.copyOf(data,data.length);
@@ -98,6 +128,7 @@ abstract class MemoStorable implements Serializable {
 				result=concat(data,result); //Add to front of result, due to the storing order
 			}
 			
+				
 		} catch (EntityNotFoundException e) {
 			e.printStackTrace();
 			return null;
@@ -105,6 +136,28 @@ abstract class MemoStorable implements Serializable {
 		MemoStorable res = _unserialize(result);
 		res.myKey = key;
 		return res;
+		
+	}
+	protected static MemoStorable load(Key key){
+		try {
+			Entity ent = datastore.get(key);
+			return load(ent);
+		} catch (EntityNotFoundException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	public static ArrayList<MemoStorable> getChanges(String type,Date after){
+		
+		Query q = new Query(type).addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
+		PreparedQuery pq = datastore.prepare(q);
+		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(pq.countEntities(withLimit(1000)));
+		Iterator<Entity> iter = pq.asIterator();
+		while (iter.hasNext()) {
+			Entity ent = iter.next();
+			result.add(load(ent));
+		}
+		return result;
 	}
 	
 	private static MemoStorable _unserialize(byte[] data) {
@@ -130,20 +183,6 @@ abstract class MemoStorable implements Serializable {
 		return result;
 	}
 	
-	public void delete(){
-		if (myKey != null) delete(myKey);
-	}
-	private void delete(Key key){
-		try {
-			Entity ent = datastore.get(key);
-			if (ent.hasProperty("next")){
-				delete((Key)ent.getProperty("next")); //recurse
-			}
-			datastore.delete(key);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 	
 	//Tools:
 	private static byte[] concat(byte[]... arrays) {
