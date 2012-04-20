@@ -13,9 +13,11 @@ public class MemoReadBus {
 	}
 	
 	public boolean valueChanged(long timestamp){
+		//TODO		
 		return false;
 	}
 	public boolean opsChanged(long timestamp){
+		//TODO
 		return false;
 	}
 	
@@ -30,6 +32,10 @@ public class MemoReadBus {
 		//Find at timestamp
 		//Find at timestamp
 		return null;
+	}
+	public ArrayList<MemoNode> findAll(UUID uuid){
+		//TODO
+		return new ArrayList<MemoNode>();
 	}
 	public NodeValue getValue(UUID uuid){
 		//TODO

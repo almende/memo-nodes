@@ -63,13 +63,14 @@ public class MemoNode {
 		return new String(this.value.getValue());
 	}
 	public byte[] valueAt(long timestamp){
-		//TODO: get NodeValue @timestamp
-		return this.value.getValue();
+		NodeValue oldValue = readBus.getValue(getId(), timestamp);
+		return oldValue.getValue();
 	}
 	public ArrayList<MemoNode> history(){
-		//TODO: get all historical NodeValues and Arcs, return sorted by date
-		ArrayList<MemoNode> result= new ArrayList<MemoNode>(1);
-		result.add(this);
+		ArrayList<MemoNode> result = readBus.findAll(getId());
+		if (!result.get(result.size()).equals(this)){
+			result.add(this);	
+		}
 		return result;
 	}
 	public UUID getId(){
