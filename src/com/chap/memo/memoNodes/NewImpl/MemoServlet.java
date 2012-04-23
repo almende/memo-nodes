@@ -97,6 +97,41 @@ public class MemoServlet extends HttpServlet {
 		
 		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found: "+third.getParents().get(0).getStringValue());
 		
+		log(resp,true,"Same shard OPS delete and add again:");
+		first.delChild(third.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"1"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"1"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(new Integer(third.getParents().size()).toString(),"0"),"Child has parents:"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+
+		first.addChild(third.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"2"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"1"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(new Integer(third.getParents().size()).toString(),"1"),"Child has parents:"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+
+		log(resp,true,"Older shard OPS delete and add again:");
+		first.delChild(second.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"1"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"0"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(new Integer(third.getParents().size()).toString(),"1"),"Child has parents:"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+
+		first.addChild(second.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"2"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"1"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(new Integer(third.getParents().size()).toString(),"1"),"Child has parents:"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+		
+		//third.addChild(second.getId());
+		//log(resp,test(first.getChildren().get(0).getChildren().get(0).getStringValue(),secondTitle),"Two deep child found: "+first.getChildren().get(0).getChildren().get(0).getStringValue());
+		
 	}
 		
 		

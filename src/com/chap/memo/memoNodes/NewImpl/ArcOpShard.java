@@ -18,7 +18,7 @@ public final class ArcOpShard extends MemoStorable {
 			boolean found = false;
 			for (int i = 0; i < size; i++) {
 				long comp = cur.get(i).getTimestamp_long();
-				if (comp < ops.getTimestamp_long())continue;
+				if (comp <= ops.getTimestamp_long())continue;
 				cur.add(i,ops);
 				found = true;
 				break;
@@ -38,7 +38,7 @@ public final class ArcOpShard extends MemoStorable {
 			boolean found = false;
 			for (int i = 0; i < size; i++) {
 				long comp = cur.get(i).getTimestamp_long();
-				if (comp < ops.getTimestamp_long())continue;
+				if (comp <= ops.getTimestamp_long())continue;
 				cur.add(i,ops);
 				found = true;
 				break;

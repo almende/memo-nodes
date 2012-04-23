@@ -68,7 +68,7 @@ public class ArcList {
 		arc[this.type]=other;
 		arc[Math.abs(this.type-1)]=this.nodeId;
 
-		ArcOp op=new ArcOp(Ops.ADD,arc, new Date());
+		ArcOp op=new ArcOp(Ops.DELETE,arc, new Date());
 		writeBus.store(op);
 		arcops.add(op);
 		ops2nodes();

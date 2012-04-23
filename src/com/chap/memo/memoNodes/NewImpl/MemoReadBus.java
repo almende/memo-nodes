@@ -119,24 +119,8 @@ public class MemoReadBus {
 		return getOps(uuid,type,new Date().getTime());
 	}
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
-		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);
-		switch (type){
-		case 0: //parentList, UUID is child
-			for (ArcOp op : MemoWriteBus.getBus().ops.getChildOps(uuid)){
-				if (op.getTimestamp_long()<= timestamp){
-					result.add(op);
-				}
-			}
-			break;
-		case 1:
-			for (ArcOp op : MemoWriteBus.getBus().ops.getParentOps(uuid)){
-				if (op.getTimestamp_long()<= timestamp){
-					result.add(op);
-				}
-			}
-			break;			
-		}
-		
+		//TODO: Still need to guarantee the sort order within result;
+		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);		
 		Query q = new Query("ArcOpIndex").addSort("timestamp").addFilter("timestamp", FilterOperator.LESS_THAN_OR_EQUAL, timestamp);
 		PreparedQuery pq = datastore.prepare(q);
 		Iterator<Entity> iter = pq.asIterator();
@@ -163,7 +147,23 @@ public class MemoReadBus {
 					}	
 				}
 				break;
+			}			
+		}
+		switch (type){
+		case 0: //parentList, UUID is child
+			for (ArcOp op : MemoWriteBus.getBus().ops.getChildOps(uuid)){
+				if (op.getTimestamp_long()<= timestamp){
+					result.add(op);
+				}
 			}
+			break;
+		case 1:
+			for (ArcOp op : MemoWriteBus.getBus().ops.getParentOps(uuid)){
+				if (op.getTimestamp_long()<= timestamp){
+					result.add(op);
+				}
+			}
+			break;			
 		}
 		return result;
 	}
