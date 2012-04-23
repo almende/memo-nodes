@@ -56,6 +56,7 @@ public class MemoReadBus {
 				}
 			}
 		}
+		Collections.sort(result);
 		return result;
 	}
 	public NodeValue getValue(UUID uuid){

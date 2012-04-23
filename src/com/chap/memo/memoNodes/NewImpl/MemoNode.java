@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 import net.sf.json.JSONObject;
 import com.eaio.uuid.UUID;
 
-public class MemoNode {
+public class MemoNode implements Comparable<MemoNode> {
 	MemoReadBus readBus = MemoReadBus.getBus();
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
 	long lastUpdate= new Date().getTime();
@@ -18,6 +18,12 @@ public class MemoNode {
 	private NodeValue value;
 	private final ArcList parents;
 	private final ArcList children;
+	
+	@Override
+	public int compareTo(MemoNode o) {
+		return (int) ((this.getTimestamp() - o.getTimestamp())%1);
+	}
+
 	
 	public MemoNode(NodeValue value, ArcList parents, ArcList children){
 		this.value=value;
