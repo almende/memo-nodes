@@ -5,7 +5,7 @@ import java.util.Date;
 
 import com.eaio.uuid.UUID;
 
-public class ArcOp implements Serializable {
+public class ArcOp implements Serializable,Comparable<ArcOp> {
 	private static final long serialVersionUID = 3848738698324348856L;
 	private final Ops type; 
 	private final UUID[] arc;
@@ -52,5 +52,10 @@ public class ArcOp implements Serializable {
 	}
 	public long getTimestamp_long() {
 		return timestamp;
+	}
+	
+	@Override
+	public int compareTo(ArcOp o) {
+		return (int) ((this.timestamp - o.timestamp)%1);
 	}
 }

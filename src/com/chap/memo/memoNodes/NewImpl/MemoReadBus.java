@@ -1,6 +1,7 @@
 package com.chap.memo.memoNodes.NewImpl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 
@@ -119,7 +120,6 @@ public class MemoReadBus {
 		return getOps(uuid,type,new Date().getTime());
 	}
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
-		//TODO: Still need to guarantee the sort order within result;
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);		
 		Query q = new Query("ArcOpIndex").addSort("timestamp").addFilter("timestamp", FilterOperator.LESS_THAN_OR_EQUAL, timestamp);
 		PreparedQuery pq = datastore.prepare(q);
@@ -165,6 +165,7 @@ public class MemoReadBus {
 			}
 			break;			
 		}
+		Collections.sort(result);
 		return result;
 	}
 	
