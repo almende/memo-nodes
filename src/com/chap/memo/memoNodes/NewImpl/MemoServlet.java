@@ -64,6 +64,39 @@ public class MemoServlet extends HttpServlet {
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
 		
+		title = "First node";
+		first.update(title.getBytes());
+		
+		String secondTitle = "Second node";
+		MemoNode second = new MemoNode(secondTitle);
+		
+		first.addChild(second.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"1"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"1"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		
+		MemoWriteBus.getBus().flush();
+		second = MemoReadBus.getBus().find(first.getId()).getChildren().get(0);
+		log(resp,test(second.getStringValue(),secondTitle),"Child found after flush: "+second.getId()+"/"+second.getStringValue());		
+		
+		secondTitle = "Second node (new Value)";
+		second.update(secondTitle.getBytes());
+		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Updated child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		
+		String thirdTitle="Third Node";
+		MemoNode third = new MemoNode(thirdTitle);
+		
+		first.addChild(third.getId());
+		log(resp,test(new Integer(first.getChildren().size()).toString(),"2"),"Node has children:"+first.getId()+":"+first.getChildren().size());
+		log(resp,test(new Integer(first.getParents().size()).toString(),"0"),"Node has parents:"+first.getId()+":"+first.getParents().size());
+		log(resp,test(new Integer(second.getParents().size()).toString(),"1"),"Child has parents:"+second.getId()+":"+second.getParents().size());
+		log(resp,test(new Integer(third.getParents().size()).toString(),"1"),"Child has parents:"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+		
+		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found: "+third.getParents().get(0).getStringValue());
+		
 	}
 		
 		

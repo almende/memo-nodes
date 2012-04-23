@@ -13,14 +13,18 @@ import com.google.appengine.api.datastore.Query;
 public class MemoWriteBus {
 	private final static MemoWriteBus bus= new MemoWriteBus();
 	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+	NodeValueShard values;
+	ArcOpShard ops;
 	
-	private MemoWriteBus(){};
+	private MemoWriteBus(){
+		values = new NodeValueShard();
+		ops = new ArcOpShard();
+	};
 	
 	public static MemoWriteBus getBus(){
 		return bus;
 	}
-	NodeValueShard values = new NodeValueShard();
-	ArcOpShard ops = new ArcOpShard();
+
 	
 	static public void emptyDB() {
 		// create one big cleanup query
@@ -48,7 +52,6 @@ public class MemoWriteBus {
 	
 	public void flushValues(){
 		new NodeValueIndex(values);
-		System.out.println("New shard initialized!");
 		values= new NodeValueShard();
 	}
 	public void flushOps(){
@@ -59,7 +62,6 @@ public class MemoWriteBus {
 	public NodeValue store(UUID id, byte[] value){
 		NodeValue result = new NodeValue(id, value, new Date().getTime());
 		values.store(result);
-		System.out.println("Stored in shard:"+id+"->"+values.find(id));
 		if (values.nodes.size() >= NodeValueShard.SHARDSIZE){
 				flushValues();
 		}

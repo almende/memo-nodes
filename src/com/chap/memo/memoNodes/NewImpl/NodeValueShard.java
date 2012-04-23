@@ -17,7 +17,6 @@ public final class NodeValueShard extends MemoStorable{
 	public void store(NodeValue nodeVal) {
 		ArrayList<NodeValue> cur = nodes.get(nodeVal.getId());
 		if (cur != null) {
-			System.out.println("Nodes get: "+nodeVal.getId()+":"+cur.size());
 			int size = cur.size();
 			boolean found = false;
 			for (int i = 0; i < size; i++) {
@@ -25,21 +24,16 @@ public final class NodeValueShard extends MemoStorable{
 				if (comp < nodeVal.getTimestamp_long())continue;
 				cur.add(i,nodeVal);
 				found = true;
-				System.out.println("Add at"+i);
-				
 				break;
 			}
 			if (!found) {
-				System.out.println("Add to end");
 				cur.add(nodeVal);
 			}
 		} else {
-			System.out.println("Nodes get: "+nodeVal.getId()+":new cur");
 			cur = new ArrayList<NodeValue>(3);
 			cur.add(nodeVal);
 		}
 		nodes.put(nodeVal.getId(), cur);
-		System.out.println("Nodes.put: "+nodeVal.getId()+":"+cur.size());
 		if (newest == 0 || nodeVal.getTimestamp_long()>newest) newest = nodeVal.getTimestamp_long();
 		if (oldest == 0 || nodeVal.getTimestamp_long()<oldest) oldest = nodeVal.getTimestamp_long();
 	}

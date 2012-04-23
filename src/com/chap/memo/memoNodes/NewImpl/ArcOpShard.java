@@ -55,10 +55,13 @@ public final class ArcOpShard extends MemoStorable {
 	}
 	
 	public ArrayList<ArcOp> getChildOps(UUID id) {
-		return children.get(id);
+		ArrayList<ArcOp> result =children.get(id);
+		if (result == null) result = new ArrayList<ArcOp>(0);
+		return result;
 	}
 	public ArrayList<ArcOp> getParentOps(UUID id) {
-		return parents.get(id);
-	}
+		ArrayList<ArcOp> result =parents.get(id);
+		if (result == null) result = new ArrayList<ArcOp>(0);
+		return result;	}
 
 }

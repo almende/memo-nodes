@@ -88,5 +88,6 @@ public class ArcList {
 		if (arcops.size()>0){
 			this.timestamp = arcops.get(arcops.size()-1).getTimestamp_long();
 		}
+		this.nodes=nodeList.toArray(new UUID[0]);
 	}
 }
