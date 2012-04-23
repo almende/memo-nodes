@@ -59,14 +59,17 @@ public class MemoReadBus {
 	}
 	public NodeValue getValue(UUID uuid){
 		//TODO: performance verbeteren, op dit moment is het ongecached/ongeindexeerd in tijd opvragen voor elke Node!
+		NodeValue result = null;
+		MemoWriteBus writeBus = MemoWriteBus.getBus();
+		result = writeBus.values.find(uuid);
 		
 		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
 		PreparedQuery pq = datastore.prepare(q);
 		QueryResultList<Entity> rl = pq.asQueryResultList(withLimit(1));
+		if (rl.size() <= 0) return result;
 		Cursor cu = rl.getCursor();
 		
 		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
-		NodeValue result = null;
 		while (result == null || index.newest > result.getTimestamp_long()){
 			if (index.nodeIds.contains(uuid)){
 				NodeValueShard shard = (NodeValueShard) MemoStorable.load(index.shardKey);
@@ -76,6 +79,8 @@ public class MemoReadBus {
 				}
 			}
 			rl = pq.asQueryResultList(withLimit(1).startCursor(cu));
+			if (rl.size() <= 0) break;
+			
 			cu = rl.getCursor();
 			index = (NodeValueIndex) MemoStorable.load(rl.get(0));
 		}
@@ -83,22 +88,28 @@ public class MemoReadBus {
 	}
 	public NodeValue getValue(UUID uuid,long timestamp){
 		//TODO: performance verbeteren, op dit moment is het ongecached/ongeindexeerd in tijd opvragen voor elke Node!
+		NodeValue result = null;
+
+		MemoWriteBus writeBus = MemoWriteBus.getBus();
+		result = writeBus.values.findBefore(uuid, timestamp);
+	
 		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
 		PreparedQuery pq = datastore.prepare(q);
 		QueryResultList<Entity> rl = pq.asQueryResultList(withLimit(1));
+		if (rl.size() <= 0) return result;
 		Cursor cu = rl.getCursor();
 		
 		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
-		NodeValue result = null;
 		while (result == null || index.newest > result.getTimestamp_long()){
 			if (index.oldest < timestamp && index.nodeIds.contains(uuid)){
 				NodeValueShard shard = (NodeValueShard) MemoStorable.load(index.shardKey);
-				NodeValue res = shard.find(uuid); 
-				if (res.getTimestamp_long()<=timestamp && (result == null || res.getTimestamp_long()>result.getTimestamp_long())){
+				NodeValue res = shard.findBefore(uuid,timestamp); 
+				if (result == null || res.getTimestamp_long()>result.getTimestamp_long()){
 					result = res;
 				}
 			}
 			rl = pq.asQueryResultList(withLimit(1).startCursor(cu));
+			if (rl.size() <= 0) break;
 			cu = rl.getCursor();
 			index = (NodeValueIndex) MemoStorable.load(rl.get(0));
 		}
@@ -109,6 +120,23 @@ public class MemoReadBus {
 	}
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);
+		switch (type){
+		case 0: //parentList, UUID is child
+			for (ArcOp op : MemoWriteBus.getBus().ops.getChildOps(uuid)){
+				if (op.getTimestamp_long()<= timestamp){
+					result.add(op);
+				}
+			}
+			break;
+		case 1:
+			for (ArcOp op : MemoWriteBus.getBus().ops.getParentOps(uuid)){
+				if (op.getTimestamp_long()<= timestamp){
+					result.add(op);
+				}
+			}
+			break;			
+		}
+		
 		Query q = new Query("ArcOpIndex").addSort("timestamp").addFilter("timestamp", FilterOperator.LESS_THAN_OR_EQUAL, timestamp);
 		PreparedQuery pq = datastore.prepare(q);
 		Iterator<Entity> iter = pq.asIterator();

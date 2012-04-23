@@ -1,9 +1,6 @@
 package com.chap.memo.memoNodes.NewImpl;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -11,67 +8,63 @@ import javax.servlet.http.HttpServletResponse;
 @SuppressWarnings("serial")
 public class MemoServlet extends HttpServlet {
 
-	@SuppressWarnings("unused")
+	private void log(HttpServletResponse resp, boolean ok, String msg){
+		try {
+			resp.getWriter().println((ok?"[OK]":"!!!ERROR!!!")+"  -   "+msg);
+			resp.flushBuffer();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println(msg);
+	}
+	private boolean test(String compare, String result){
+		return compare.equals(result);
+	}
+	
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
-		String cleanDBParm = req.getParameter("cleanDB");
-		if (cleanDBParm != null) {
-			resp.setContentType("text/plain");
-			MemoWriteBus.emptyDB();
-			resp.getWriter().println("Database cleared!");
-		}
-		if (cleanDBParm != null && cleanDBParm.equals("only")) {
-			return;
-		}
-		int nofNodes = 100000;
-		String sNofNodes = req.getParameter("nofNodes");
-		if (sNofNodes != null){
-			try {
-				nofNodes=Integer.parseInt(sNofNodes);
-			} catch (Exception e){
-				System.out.println("couldn't parse nofNodes="+sNofNodes);
-			}
-		}
 		
-		resp.setContentType("text/html");
+		resp.setContentType("text/plain");
+		MemoWriteBus.emptyDB();
+		
+		log(resp,true,"Database cleared!");
+		
+		//Add single node
+		String title="First node";
+		MemoNode first = new MemoNode(title);
+		
+		log(resp,test(first.getStringValue(),title),"Node written and read:"+first.getStringValue());
+		
+		first = MemoReadBus.getBus().find(first.getId());
+		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
+		
+		MemoWriteBus.getBus().flush();
+		log(resp,test(first.getStringValue(),title),"Read after flush: "+first.getId()+"/"+first.getStringValue());
+		
+		first = MemoReadBus.getBus().find(first.getId());
+		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
+		
+		title="New Value (First node)";
+		first.update(title.getBytes());
+		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
+		
+		first = MemoReadBus.getBus().find(first.getId());
+		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
 
-		Date start = new Date();
-		resp.getWriter()
-				.println(
-						"<html><body>Starting to generate Nodes<br><div style='display:block;position:relative;width:1000px;height:600px'>");
+		title="double new Value in same shard (First node)";
+		first.update(title.getBytes());
+		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
+		
+		first = MemoReadBus.getBus().find(first.getId());
+		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
 
-		// Generate 10.000 nodes in one linked list
-		MemoNode node = new MemoNode("start");
-		for (int i = 0; i < nofNodes; i++) {
-			MemoNode newNode = new MemoNode(new Integer(i).toString());
-			newNode.addChild(node.getId());
-			node=newNode;
-		}
-		Date time = new Date();
-		System.out.println("Storing done in "
-				+ (time.getTime() - start.getTime()) + " ms -> "+ node.getId());
-		resp.getWriter()
-				.println(
-						"<br>Done in:" + (time.getTime() - start.getTime())
-								+ " ms<br>");
-		int count = 0;
-		// node = Node.find("start");
-		while (node != null) {
-			String value = node.getStringValue();
-			//System.out.println(value+ ":" + node.getChildren().size());
-			ArrayList<MemoNode> children = node.getChildren();
-			if (children.isEmpty()) {
-				System.out.println(node.getId() +":"+ node.getStringValue() + " has no children!");
-				break;
-			}
-			count++;
-			if (children.get(0) == null){
-				System.out.println(node.getId()+":"+ node.getStringValue() + " has NUll node as a child!");
-			}
-			node = children.get(0);
-		}
-		resp.getWriter().println(
-				"Count " + count + " counted in:"
-						+ (new Date().getTime() - time.getTime()) + " ms<br>");
+		MemoWriteBus.getBus().flush();
+		log(resp,test(first.getStringValue(),title),"Read after flush: "+first.getId()+"/"+first.getStringValue());
+		
+		first = MemoReadBus.getBus().find(first.getId());
+		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
+		
 	}
+		
+		
 }

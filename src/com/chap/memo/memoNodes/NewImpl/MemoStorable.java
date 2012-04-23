@@ -107,6 +107,11 @@ abstract class MemoStorable implements Serializable {
 		ent.setProperty("timestamp",this.storeTime);
 		datastore.put(ent);
 		myKey = ent.getKey();
+		//Try to force index writing
+		try {
+			datastore.get(myKey);
+		} catch (EntityNotFoundException e) {
+		}
 		return myKey;
 	}
 	
