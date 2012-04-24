@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Map;
 
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.Cursor;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
@@ -18,6 +20,14 @@ import com.google.appengine.api.datastore.QueryResultList;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 
 public class MemoReadBus {
+	//Shard caches:
+	static Map<Key, NodeValueShard> NodeValueShards = Collections
+			.synchronizedMap(new MyMap<Key, NodeValueShard>(10, new Float(
+					0.5), true));
+	static Map<Key, ArcOpShard> ArcOpShards = Collections
+			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(
+					0.5), true));
+		
 	private final static MemoReadBus bus = new MemoReadBus();
 	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 	private MemoReadBus(){};
@@ -49,7 +59,15 @@ public class MemoReadBus {
 		while (iter.hasNext()){
 			NodeValueIndex index = (NodeValueIndex) MemoStorable.load(iter.next());
 			if (index.nodeIds.contains(uuid)){
-				NodeValueShard shard = (NodeValueShard) MemoStorable.load(index.shardKey);
+				NodeValueShard shard;
+				synchronized(NodeValueShards){
+					if (NodeValueShards.containsKey(index.shardKey)){
+						shard = NodeValueShards.get(index.shardKey);
+					} else {
+						shard = (NodeValueShard) MemoStorable.load(index.shardKey); 
+					}
+				}
+				NodeValueShards.put(shard.myKey,shard);
 				for (NodeValue nv : shard.findAll(uuid)){
 					//TODO:Moet eigenlijk nog sorteren op tijd
 					result.add(new MemoNode(nv));
@@ -74,7 +92,16 @@ public class MemoReadBus {
 		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
 		while (result == null || index.newest > result.getTimestamp_long()){
 			if (index.nodeIds.contains(uuid)){
-				NodeValueShard shard = (NodeValueShard) MemoStorable.load(index.shardKey);
+				NodeValueShard shard=null;
+				synchronized(NodeValueShards){
+					if (NodeValueShards.containsKey(index.shardKey)){
+						shard = NodeValueShards.get(index.shardKey);
+					}
+				}
+				if (shard ==null) {
+					shard = (NodeValueShard) MemoStorable.load(index.shardKey); 
+				}
+				NodeValueShards.put(shard.myKey,shard);
 				NodeValue res = shard.find(uuid); 
 				if (result == null || res.getTimestamp_long()>result.getTimestamp_long()){
 					result = res;
@@ -104,7 +131,16 @@ public class MemoReadBus {
 		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
 		while (result == null || index.newest > result.getTimestamp_long()){
 			if (index.oldest < timestamp && index.nodeIds.contains(uuid)){
-				NodeValueShard shard = (NodeValueShard) MemoStorable.load(index.shardKey);
+				NodeValueShard shard=null;
+				synchronized(NodeValueShards){
+					if (NodeValueShards.containsKey(index.shardKey)){
+						shard = NodeValueShards.get(index.shardKey);
+					}
+				}
+				if (shard ==null) {
+					shard = (NodeValueShard) MemoStorable.load(index.shardKey); 
+				}
+				NodeValueShards.put(shard.myKey,shard);
 				NodeValue res = shard.findBefore(uuid,timestamp); 
 				if (result == null || res.getTimestamp_long()>result.getTimestamp_long()){
 					result = res;
@@ -130,7 +166,16 @@ public class MemoReadBus {
 			switch (type){
 			case 0: //parentList, UUID is child
 				if (index.children.contains(uuid)){
-					ArcOpShard shard = (ArcOpShard) MemoStorable.load(index.shardKey);
+					ArcOpShard shard=null;
+					synchronized(NodeValueShards){
+						if (ArcOpShards.containsKey(index.shardKey)){
+							shard = ArcOpShards.get(index.shardKey);
+						}
+					}
+					if (shard==null) {
+						shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
+					}
+					ArcOpShards.put(shard.myKey,shard);
 					for (ArcOp op : shard.getChildOps(uuid)){
 						if (op.getTimestamp_long()<= timestamp){
 							result.add(op);
@@ -140,7 +185,16 @@ public class MemoReadBus {
 				break;
 			case 1: //parentList, UUID is child
 				if (index.parents.contains(uuid)){
-					ArcOpShard shard = (ArcOpShard) MemoStorable.load(index.shardKey);
+					ArcOpShard shard=null;
+					synchronized(NodeValueShards){
+						if (ArcOpShards.containsKey(index.shardKey)){
+							shard = ArcOpShards.get(index.shardKey);
+						}
+					}
+					if (shard==null) {
+						shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
+					}
+					ArcOpShards.put(shard.myKey,shard);
 					for (ArcOp op : shard.getParentOps(uuid)){
 						if (op.getTimestamp_long()<= timestamp){
 							result.add(op);

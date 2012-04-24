@@ -15,7 +15,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
 	long lastUpdate= new Date().getTime();
 	
-	private NodeValue value;
+	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
 	
@@ -24,7 +24,6 @@ public class MemoNode implements Comparable<MemoNode> {
 		return (int) ((this.getTimestamp() - o.getTimestamp())%1);
 	}
 
-	
 	public MemoNode(NodeValue value, ArcList parents, ArcList children){
 		this.value=value;
 		this.parents=parents;
@@ -73,13 +72,17 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 
 	public byte[] getValue(){
-		if (readBus.valueChanged(lastUpdate)){
+		if (this.value == null || readBus.valueChanged(lastUpdate)){
 			this.value=readBus.getValue(this.value.getId());
 			lastUpdate=new Date().getTime();
 		}
 		return this.value.getValue();
 	}
 	public String getStringValue(){
+		if (this.value == null || readBus.valueChanged(lastUpdate)){
+			this.value=readBus.getValue(this.value.getId());
+			lastUpdate=new Date().getTime();
+		}
 		return new String(this.value.getValue());
 	}
 	public byte[] valueAt(long timestamp){
