@@ -1,5 +1,7 @@
 package com.chap.memo.memoNodes.NewImpl;
 
+import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -14,10 +16,8 @@ import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
-import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.Query.SortDirection;
 import com.google.appengine.api.datastore.QueryResultList;
-import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 
 public class MemoReadBus {
 	//Shard caches:
@@ -27,10 +27,47 @@ public class MemoReadBus {
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
 			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(
 					0.5), true));
-		
+	ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
+	ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(100);
+	PreparedQuery NodeValueIndexQuery;
+	Cursor NodeValueCursor;
+	PreparedQuery ArcOpIndexQuery;
+	Cursor ArcOpCursor;
+	DatastoreService datastore = null;
+	
+	
 	private final static MemoReadBus bus = new MemoReadBus();
-	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-	private MemoReadBus(){};
+	
+	public void loadIndexes(){
+		if (datastore == null) datastore = DatastoreServiceFactory.getDatastoreService();
+		
+		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
+		NodeValueIndexQuery = datastore.prepare(q);
+		QueryResultList<Entity> rl = NodeValueIndexQuery.asQueryResultList(withLimit(100));
+		if (rl.size() > 0) {
+			NodeValueCursor = rl.getCursor();
+			for (Entity ent : rl){
+				NodeValueIndex index = (NodeValueIndex) MemoStorable.load(ent);
+				NodeValueIndexes.add(index);
+			}
+		}
+		
+		q = new Query("ArcOpIndex").addSort("timestamp");
+		ArcOpIndexQuery = datastore.prepare(q);
+		rl = ArcOpIndexQuery.asQueryResultList(withLimit(1000));//TODO: what if more than 1000 ArcOpIndexes are stored?
+		if (rl.size() > 0) {
+			ArcOpCursor = rl.getCursor();
+			for (Entity ent : rl){
+				ArcOpIndex index = (ArcOpIndex) MemoStorable.load(ent);
+				ArcOpIndexes.add(index);
+			}
+		}
+	
+	}
+	
+	private MemoReadBus(){
+		loadIndexes();
+	};
 	
 	public static MemoReadBus getBus(){
 		return bus;
@@ -83,14 +120,10 @@ public class MemoReadBus {
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
 		result = writeBus.values.find(uuid);
 		
-		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
-		PreparedQuery pq = datastore.prepare(q);
-		QueryResultList<Entity> rl = pq.asQueryResultList(withLimit(1));
-		if (rl.size() <= 0) return result;
-		Cursor cu = rl.getCursor();
-		
-		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
-		while (result == null || index.newest > result.getTimestamp_long()){
+		int indexCnt = 0;
+		if (indexCnt >= NodeValueIndexes.size()) return result;
+		NodeValueIndex index = NodeValueIndexes.get(indexCnt++);
+		while (index != null && (result == null || index.newest > result.getTimestamp_long())){
 			if (index.nodeIds.contains(uuid)){
 				NodeValueShard shard=null;
 				synchronized(NodeValueShards){
@@ -107,29 +140,24 @@ public class MemoReadBus {
 					result = res;
 				}
 			}
-			rl = pq.asQueryResultList(withLimit(1).startCursor(cu));
-			if (rl.size() <= 0) break;
-			
-			cu = rl.getCursor();
-			index = (NodeValueIndex) MemoStorable.load(rl.get(0));
+			if (indexCnt >= NodeValueIndexes.size()){
+				//TODO: load more indexes;
+			} else {
+				index = NodeValueIndexes.get(indexCnt++);
+			}
 		}
 		return result;
 	}
 	public NodeValue getValue(UUID uuid,long timestamp){
-		//TODO: performance verbeteren, op dit moment is het ongecached/ongeindexeerd in tijd opvragen voor elke Node!
 		NodeValue result = null;
 
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
 		result = writeBus.values.findBefore(uuid, timestamp);
-	
-		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
-		PreparedQuery pq = datastore.prepare(q);
-		QueryResultList<Entity> rl = pq.asQueryResultList(withLimit(1));
-		if (rl.size() <= 0) return result;
-		Cursor cu = rl.getCursor();
 		
-		NodeValueIndex index = (NodeValueIndex) MemoStorable.load(rl.get(0));
-		while (result == null || index.newest > result.getTimestamp_long()){
+		int indexCnt = 0;
+		if (indexCnt >= NodeValueIndexes.size()) return result;
+		NodeValueIndex index = NodeValueIndexes.get(indexCnt++);
+		while (index != null && (result == null || index.newest > result.getTimestamp_long())){
 			if (index.oldest < timestamp && index.nodeIds.contains(uuid)){
 				NodeValueShard shard=null;
 				synchronized(NodeValueShards){
@@ -146,23 +174,23 @@ public class MemoReadBus {
 					result = res;
 				}
 			}
-			rl = pq.asQueryResultList(withLimit(1).startCursor(cu));
-			if (rl.size() <= 0) break;
-			cu = rl.getCursor();
-			index = (NodeValueIndex) MemoStorable.load(rl.get(0));
-		}
+			if (indexCnt >= NodeValueIndexes.size()){
+				//TODO: load more indexes;
+			} else {
+				index = NodeValueIndexes.get(indexCnt++);
+			}
+		}		
 		return result;
 	}
 	public ArrayList<ArcOp> getOps(UUID uuid,int type){
 		return getOps(uuid,type,new Date().getTime());
 	}
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
-		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);		
-		Query q = new Query("ArcOpIndex").addSort("timestamp").addFilter("timestamp", FilterOperator.LESS_THAN_OR_EQUAL, timestamp);
-		PreparedQuery pq = datastore.prepare(q);
-		Iterator<Entity> iter = pq.asIterator();
+		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);	
+		
+		Iterator<ArcOpIndex> iter = ArcOpIndexes.iterator();
 		while (iter.hasNext()){
-			ArcOpIndex index = (ArcOpIndex) MemoStorable.load(iter.next());
+			ArcOpIndex index = iter.next();
 			switch (type){
 			case 0: //parentList, UUID is child
 				if (index.children.contains(uuid)){

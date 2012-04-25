@@ -42,6 +42,7 @@ public class MemoWriteBus {
 				}
 			}
 		}
+		MemoReadBus.getBus().loadIndexes();
 		System.out.println("Database cleared!");
 	}
 	
@@ -51,11 +52,13 @@ public class MemoWriteBus {
 	}
 	
 	public void flushValues(){
-		new NodeValueIndex(values);
+		NodeValueIndex index = new NodeValueIndex(values);
+		MemoReadBus.getBus().NodeValueIndexes.add(0, index);//At the start of the array
 		values= new NodeValueShard();
 	}
 	public void flushOps(){
-		new ArcOpIndex(ops);
+		ArcOpIndex index = new ArcOpIndex(ops);
+		MemoReadBus.getBus().ArcOpIndexes.add(index);//to the end of the array
 		ops= new ArcOpShard();
 	}
 	

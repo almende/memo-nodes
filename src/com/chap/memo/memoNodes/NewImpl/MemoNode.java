@@ -21,7 +21,22 @@ public class MemoNode implements Comparable<MemoNode> {
 	
 	@Override
 	public int compareTo(MemoNode o) {
+		if (this.getId().equals(o.getId())) return 0;
 		return (int) ((this.getTimestamp() - o.getTimestamp())%1);
+	}
+	
+	@Override
+	public int hashCode(){
+		return this.getId().hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object o){
+		if (o instanceof MemoNode) {
+			return this.getId().equals(((MemoNode)o).getId());
+		} else {
+			return false;
+		}
 	}
 
 	public MemoNode(NodeValue value, ArcList parents, ArcList children){
@@ -69,6 +84,18 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 	public void delChild(UUID child){
 		children.delNode(child);			
+	}
+	public void addParent(MemoNode parent){
+		parents.addNode(parent.getId());
+	}
+	public void addChild(MemoNode child){
+		children.addNode(child.getId());		
+	}
+	public void delParent(MemoNode parent){
+		parents.delNode(parent.getId());
+	}
+	public void delChild(MemoNode child){
+		children.delNode(child.getId());			
 	}
 
 	public byte[] getValue(){
@@ -123,7 +150,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
 				this.children.getLength());
 		for (MemoNode child : getChildren()) {
-			if (child.getValue().equals(value)) {
+			if (child.getStringValue().equals(value)) {
 				result.add(child);
 				if (topx > 0 && result.size() >= topx)
 					return result;
@@ -372,7 +399,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 	public boolean match(MemoNode node) {
 		switch (this.type) {
 		case Equal:
-			return node.getValue().equals(this.value);
+			return node.getStringValue().equals(this.value);
 		case Regex:
 			return this.regex.matcher(node.getStringValue()).matches();
 		case Range:
