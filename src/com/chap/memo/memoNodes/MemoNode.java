@@ -73,6 +73,9 @@ public class MemoNode implements Comparable<MemoNode> {
 	public void update(byte[] value){
 		this.value=writeBus.store(this.value.getId(), value);
 	}
+	public void update(String value){
+		this.value=writeBus.store(this.value.getId(), value.getBytes());
+	}
 	public void addParent(UUID parent){
 		parents.addNode(parent);
 	}

@@ -50,14 +50,14 @@ public class MemoServlet extends HttpServlet {
 		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
 		
 		title="New Value (First node)";
-		first.update(title.getBytes());
+		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
 
 		title="double new Value in same shard (First node)";
-		first.update(title.getBytes());
+		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
@@ -70,12 +70,12 @@ public class MemoServlet extends HttpServlet {
 		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
 		
 		title = "First node";
-		first.update(title.getBytes());
+		first.update(title);
 		
 		String secondTitle = "Second node";
 		MemoNode second = new MemoNode(secondTitle);
 		
-		first.addChild(second.getId());
+		first.addChild(second);
 		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
@@ -86,13 +86,13 @@ public class MemoServlet extends HttpServlet {
 		log(resp,test(second.getStringValue(),secondTitle),"Child found after flush: "+second.getId()+"/"+second.getStringValue());		
 		
 		secondTitle = "Second node (new Value)";
-		second.update(secondTitle.getBytes());
+		second.update(secondTitle);
 		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Updated child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		
 		String thirdTitle="Third Node";
 		MemoNode third = new MemoNode(thirdTitle);
 		
-		first.addChild(third.getId());
+		first.addChild(third);
 		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
@@ -103,14 +103,14 @@ public class MemoServlet extends HttpServlet {
 		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found: "+third.getParents().get(0).getStringValue());
 		
 		log(resp,true,"Same shard OPS delete and add again:");
-		first.delChild(third.getId());
+		first.delChild(third);
 		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
 		log(resp,(third.getParents().size()==0),"Child has parents:"+third.getId()+":"+third.getParents().size());
 		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 
-		first.addChild(third.getId());
+		first.addChild(third);
 		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
@@ -119,14 +119,14 @@ public class MemoServlet extends HttpServlet {
 		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 
 		log(resp,true,"Older shard OPS delete and add again:");
-		first.delChild(second.getId());
+		first.delChild(second);
 		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==0),"Child has parents:"+second.getId()+":"+second.getParents().size());
 		log(resp,(third.getParents().size()==1),"Child has parents:"+third.getId()+":"+third.getParents().size());
 		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 
-		first.addChild(second.getId());
+		first.addChild(second);
 		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
 		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
