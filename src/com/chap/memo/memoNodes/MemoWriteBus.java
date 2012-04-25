@@ -42,7 +42,7 @@ public class MemoWriteBus {
 				}
 			}
 		}
-		MemoReadBus.getBus().loadIndexes();
+		MemoReadBus.getBus().loadIndexes(true,0);
 		System.out.println("Database cleared!");
 	}
 	

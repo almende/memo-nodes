@@ -9,13 +9,13 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.eaio.uuid.UUID;
-import com.google.appengine.api.datastore.Cursor;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.Query.SortDirection;
 import com.google.appengine.api.datastore.QueryResultList;
 
@@ -27,25 +27,28 @@ public class MemoReadBus {
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
 			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(
 					0.5), true));
+	
 	ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
-	ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(100);
-	PreparedQuery NodeValueIndexQuery;
-	Cursor NodeValueCursor;
-	PreparedQuery ArcOpIndexQuery;
-	Cursor ArcOpCursor;
+	ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(1000);
 	DatastoreService datastore = null;
 	
 	
 	private final static MemoReadBus bus = new MemoReadBus();
 	
-	public void loadIndexes(){
+	public void loadIndexes(boolean clear, long sinceTimestamp){
+		//TODO, merge new indexes with old ones (Sort ArrayList and remove dups)
 		if (datastore == null) datastore = DatastoreServiceFactory.getDatastoreService();
-		
-		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
-		NodeValueIndexQuery = datastore.prepare(q);
+		if (clear) {
+			NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
+			ArcOpIndexes = new ArrayList<ArcOpIndex>(1000);
+		}
+		Query q =new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
+		if (sinceTimestamp > 0){
+			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, sinceTimestamp);
+		}
+		PreparedQuery NodeValueIndexQuery = datastore.prepare(q);
 		QueryResultList<Entity> rl = NodeValueIndexQuery.asQueryResultList(withLimit(100));
 		if (rl.size() > 0) {
-			NodeValueCursor = rl.getCursor();
 			for (Entity ent : rl){
 				NodeValueIndex index = (NodeValueIndex) MemoStorable.load(ent);
 				NodeValueIndexes.add(index);
@@ -53,10 +56,12 @@ public class MemoReadBus {
 		}
 		
 		q = new Query("ArcOpIndex").addSort("timestamp");
-		ArcOpIndexQuery = datastore.prepare(q);
-		rl = ArcOpIndexQuery.asQueryResultList(withLimit(1000));//TODO: what if more than 1000 ArcOpIndexes are stored?
+		if (sinceTimestamp > 0){
+			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, sinceTimestamp);
+		}
+		PreparedQuery ArcOpIndexQuery = datastore.prepare(q);
+		rl = ArcOpIndexQuery.asQueryResultList(withLimit(1000));
 		if (rl.size() > 0) {
-			ArcOpCursor = rl.getCursor();
 			for (Entity ent : rl){
 				ArcOpIndex index = (ArcOpIndex) MemoStorable.load(ent);
 				ArcOpIndexes.add(index);
@@ -66,7 +71,7 @@ public class MemoReadBus {
 	}
 	
 	private MemoReadBus(){
-		loadIndexes();
+		loadIndexes(false,0);
 	};
 	
 	public static MemoReadBus getBus(){
@@ -74,12 +79,12 @@ public class MemoReadBus {
 	}
 	
 	public boolean valueChanged(long timestamp){
-		//TODO		
-		return true;
+		//TODO
+		return false;
 	}
 	public boolean opsChanged(long timestamp){
 		//TODO
-		return true;
+		return false;
 	}
 	
 	public MemoNode find(UUID uuid){
@@ -115,38 +120,7 @@ public class MemoReadBus {
 		return result;
 	}
 	public NodeValue getValue(UUID uuid){
-		//TODO: performance verbeteren, op dit moment is het ongecached/ongeindexeerd in tijd opvragen voor elke Node!
-		NodeValue result = null;
-		MemoWriteBus writeBus = MemoWriteBus.getBus();
-		result = writeBus.values.find(uuid);
-		
-		int indexCnt = 0;
-		if (indexCnt >= NodeValueIndexes.size()) return result;
-		NodeValueIndex index = NodeValueIndexes.get(indexCnt++);
-		while (index != null && (result == null || index.newest > result.getTimestamp_long())){
-			if (index.nodeIds.contains(uuid)){
-				NodeValueShard shard=null;
-				synchronized(NodeValueShards){
-					if (NodeValueShards.containsKey(index.shardKey)){
-						shard = NodeValueShards.get(index.shardKey);
-					}
-				}
-				if (shard ==null) {
-					shard = (NodeValueShard) MemoStorable.load(index.shardKey); 
-				}
-				NodeValueShards.put(shard.myKey,shard);
-				NodeValue res = shard.find(uuid); 
-				if (result == null || res.getTimestamp_long()>result.getTimestamp_long()){
-					result = res;
-				}
-			}
-			if (indexCnt >= NodeValueIndexes.size()){
-				//TODO: load more indexes;
-			} else {
-				index = NodeValueIndexes.get(indexCnt++);
-			}
-		}
-		return result;
+		return getValue(uuid,new Date().getTime());
 	}
 	public NodeValue getValue(UUID uuid,long timestamp){
 		NodeValue result = null;

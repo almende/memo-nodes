@@ -12,7 +12,7 @@ public class ArcList {
 	long lastUpdate = 0;
 	
 	UUID[] nodes = new UUID[0];
-	ArrayList<ArcOp> arcops = new ArrayList<ArcOp>(100);
+	ArrayList<ArcOp> arcops = null;
 	int type; //0: parent list, 1:child list
 	UUID nodeId;
 	
@@ -21,6 +21,9 @@ public class ArcList {
 	public ArcList(UUID nodeId,int type){
 		this.type=type;
 		this.nodeId=nodeId;
+		this.arcops=readBus.getOps(nodeId,type);
+		ops2nodes();
+		lastUpdate=new Date().getTime();
 	}
 	//TODO: get ArcList @timestamp, don't update!
 	
@@ -38,7 +41,7 @@ public class ArcList {
 		return result;
 	}
 	public ArrayList<MemoNode> getNodes(){
-		if (readBus.valueChanged(lastUpdate)){
+		if (this.arcops == null || readBus.opsChanged(lastUpdate)){
 			this.arcops=readBus.getOps(nodeId,type);
 			ops2nodes();
 			lastUpdate=new Date().getTime();
@@ -48,7 +51,7 @@ public class ArcList {
 		for (UUID id : this.nodes) {
 			result.add(readBus.find(id));
 		}
-		return result;	
+		return result;
 	}
 	public int getLength(){
 		return this.nodes.length;

@@ -33,6 +33,7 @@ public class MemoServlet extends HttpServlet {
 			MemoWriteBus.emptyDB();
 			log(resp,true,"Database cleared!");
 		}
+		if (cleanDBParm.equals("only")) return;
 		
 		//Add single node
 		String title="First node";
@@ -286,7 +287,7 @@ public class MemoServlet extends HttpServlet {
 
 		result = startNode.search(algorithm, 2); // topx = 2
 		for (MemoNode res : result) {
-			log(resp,true,"Found 2: " +"/"+ res.getStringValue());
+			log(resp,true,"Found 2: " + res.getStringValue() +"/"+ res.getId());
 		}
 		time = new Date();
 		log(resp,test(new Integer(result.size()).toString(),"2"),"Search 2 done in " + (time.getTime() - start.getTime())

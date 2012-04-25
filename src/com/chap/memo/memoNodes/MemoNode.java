@@ -80,25 +80,25 @@ public class MemoNode implements Comparable<MemoNode> {
 		parents.addNode(parent);
 	}
 	public void addChild(UUID child){
-		children.addNode(child);		
+		children.addNode(child);
 	}
 	public void delParent(UUID parent){
 		parents.delNode(parent);
 	}
 	public void delChild(UUID child){
-		children.delNode(child);			
+		children.delNode(child);
 	}
 	public void addParent(MemoNode parent){
-		parents.addNode(parent.getId());
+		addParent(parent.getId());
 	}
 	public void addChild(MemoNode child){
-		children.addNode(child.getId());		
+		addChild(child.getId());		
 	}
 	public void delParent(MemoNode parent){
-		parents.delNode(parent.getId());
+		delParent(parent.getId());
 	}
 	public void delChild(MemoNode child){
-		children.delNode(child.getId());			
+		delChild(child.getId());			
 	}
 
 	public byte[] getValue(){
@@ -109,11 +109,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		return this.value.getValue();
 	}
 	public String getStringValue(){
-		if (this.value == null || readBus.valueChanged(lastUpdate)){
-			this.value=readBus.getValue(this.value.getId());
-			lastUpdate=new Date().getTime();
-		}
-		return new String(this.value.getValue());
+		return new String(getValue());
 	}
 	public byte[] valueAt(long timestamp){
 		NodeValue oldValue = readBus.getValue(getId(), timestamp);
