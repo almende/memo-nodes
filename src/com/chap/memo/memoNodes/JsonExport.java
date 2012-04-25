@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes.NewImpl;
+package com.chap.memo.memoNodes;
 
 import java.io.IOException;
 import javax.servlet.http.HttpServlet;

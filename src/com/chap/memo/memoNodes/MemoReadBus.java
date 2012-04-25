@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes.NewImpl;
+package com.chap.memo.memoNodes;
 
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 
