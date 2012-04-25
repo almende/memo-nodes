@@ -13,28 +13,12 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 		<url-pattern>/memo</url-pattern>
 	</servlet-mapping>
 	<servlet>
-		<servlet-name>Memo2</servlet-name>
-		<servlet-class>com.chap.memo.memoNodes.NewImpl.MemoServlet</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>Memo2</servlet-name>
-		<url-pattern>/newMemo</url-pattern>
-	</servlet-mapping>
-	<servlet>
 		<servlet-name>JSON</servlet-name>
 		<servlet-class>com.chap.memo.memoNodes.JsonExport</servlet-class>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>JSON</servlet-name>
 		<url-pattern>/json</url-pattern>
-	</servlet-mapping>
-	<servlet>
-		<servlet-name>SearchTest</servlet-name>
-		<servlet-class>com.chap.memo.memoNodes.MemoSearchServlet</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>SearchTest</servlet-name>
-		<url-pattern>/search</url-pattern>
 	</servlet-mapping>
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
