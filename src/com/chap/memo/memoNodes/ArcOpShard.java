@@ -7,51 +7,27 @@ import com.eaio.uuid.UUID;
 
 public final class ArcOpShard extends MemoStorable {
 	private static final long serialVersionUID = 7712775430540649570L;
-	static final int SHARDSIZE= 40000;
+	static final int SHARDSIZE= 30000;
+	int currentSize = 0;
 	final HashMap<UUID,ArrayList<ArcOp>> parents = new HashMap<UUID,ArrayList<ArcOp>>(SHARDSIZE);
 	final HashMap<UUID,ArrayList<ArcOp>> children = new HashMap<UUID,ArrayList<ArcOp>>(SHARDSIZE);
 	
+	
 	public void store(ArcOp ops) {
 		ArrayList<ArcOp> cur = parents.get(ops.getParent());
-		if (cur != null) {
-			int size = cur.size();
-			boolean found = false;
-			for (int i = 0; i < size; i++) {
-				long comp = cur.get(i).getTimestamp_long();
-				if (comp <= ops.getTimestamp_long())continue;
-				cur.add(i,ops);
-				found = true;
-				break;
-			}
-			if (!found) {
-				cur.add(ops);
-			}
-		} else {
+		if (cur == null) {
 			cur = new ArrayList<ArcOp>(3);
-			cur.add(ops);
 		}
+		cur.add(ops);
 		parents.put(ops.getParent(), cur);
 		
 		cur = children.get(ops.getChild());
-		if (cur != null) {
-			int size = cur.size();
-			boolean found = false;
-			for (int i = 0; i < size; i++) {
-				long comp = cur.get(i).getTimestamp_long();
-				if (comp <= ops.getTimestamp_long())continue;
-				cur.add(i,ops);
-				found = true;
-				break;
-			}
-			if (!found) {
-				cur.add(ops);
-			}
-		} else {
+		if (cur == null) {
 			cur = new ArrayList<ArcOp>(3);
-			cur.add(ops);
 		}
+		cur.add(ops);
 		children.put(ops.getChild(), cur);
-		
+		currentSize+=2;
 	}
 	
 	public ArrayList<ArcOp> getChildOps(UUID id) {

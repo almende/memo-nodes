@@ -76,7 +76,7 @@ public class MemoWriteBus {
 	public void store(ArcOp op){
 		ops.store(op);
 		MemoReadBus.getBus().lastOpsChange=new Date().getTime();
-		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
+		if (ops.currentSize >= ArcOpShard.SHARDSIZE){
 			flushOps();
 		}
 	}
