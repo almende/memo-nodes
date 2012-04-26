@@ -21,9 +21,6 @@ public class ArcList {
 	public ArcList(UUID nodeId,int type){
 		this.type=type;
 		this.nodeId=nodeId;
-		this.arcops=readBus.getOps(nodeId,type);
-		ops2nodes();
-		lastUpdate=new Date().getTime();
 	}
 	//TODO: get ArcList @timestamp, don't update!
 	
@@ -54,9 +51,18 @@ public class ArcList {
 		return result;
 	}
 	public int getLength(){
+		if (this.arcops == null || readBus.opsChanged(lastUpdate)){
+			this.arcops=readBus.getOps(nodeId,type);
+			ops2nodes();
+			lastUpdate=new Date().getTime();
+		}
 		return this.nodes.length;
 	}
 	public void addNode(UUID other){
+		if (this.arcops == null){
+			this.arcops=readBus.getOps(nodeId,type);
+			lastUpdate=new Date().getTime();
+		}
 		UUID[] arc = new UUID[2];
 		arc[this.type]=other;
 		arc[Math.abs(this.type-1)]=this.nodeId;
@@ -66,6 +72,10 @@ public class ArcList {
 		arcops.add(op);
 	}
 	public void delNode(UUID other){
+		if (this.arcops == null){
+			this.arcops=readBus.getOps(nodeId,type);
+			lastUpdate=new Date().getTime();
+		}
 		UUID[] arc = new UUID[2];
 		arc[this.type]=other;
 		arc[Math.abs(this.type-1)]=this.nodeId;
@@ -73,7 +83,6 @@ public class ArcList {
 		ArcOp op=new ArcOp(Ops.DELETE,arc, new Date());
 		writeBus.store(op);
 		arcops.add(op);
-		ops2nodes();
 	}
 	private void ops2nodes(){
 		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
