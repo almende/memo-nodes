@@ -11,6 +11,8 @@ import net.sf.json.JSONObject;
 import com.eaio.uuid.UUID;
 
 public class MemoNode implements Comparable<MemoNode> {
+	public static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
+	
 	MemoReadBus readBus = MemoReadBus.getBus();
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
 	long lastUpdate= new Date().getTime();
@@ -18,6 +20,15 @@ public class MemoNode implements Comparable<MemoNode> {
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
+	
+	public static MemoNode getRootNode() {
+		MemoReadBus readBus = MemoReadBus.getBus();
+		MemoNode result = readBus.find(ROOT);
+		if (result == null) {
+			result = new MemoNode(ROOT, "root");
+		}
+		return result;
+	}
 	
 	@Override
 	public int compareTo(MemoNode o) {
@@ -67,6 +78,16 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 	public MemoNode(String value){
 		this.value=writeBus.store(new UUID(), value.getBytes());		
+		this.parents=new ArcList(this.value.getId(),0);
+		this.children=new ArcList(this.value.getId(),1);
+	}
+	public MemoNode(UUID uuid,byte[] value){
+		this.value=writeBus.store(uuid, value);
+		this.parents=new ArcList(this.value.getId(),0);
+		this.children=new ArcList(this.value.getId(),1);
+	}
+	public MemoNode(UUID uuid,String value){
+		this.value=writeBus.store(uuid, value.getBytes());		
 		this.parents=new ArcList(this.value.getId(),0);
 		this.children=new ArcList(this.value.getId(),1);
 	}

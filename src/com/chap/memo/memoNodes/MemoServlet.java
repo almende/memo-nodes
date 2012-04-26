@@ -3,6 +3,7 @@ package com.chap.memo.memoNodes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -179,6 +180,40 @@ public class MemoServlet extends HttpServlet {
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
 		MemoWriteBus.getBus().flush();
+
+		nofNodes = 10000;
+		sNofNodes = req.getParameter("nofArcs");
+		if (sNofNodes != null){
+			try {
+				nofNodes=Integer.parseInt(sNofNodes);
+			} catch (Exception e){
+				System.out.println("couldn't parse nofArcs="+sNofNodes);
+			}
+		}
+		start = new Date();
+		log(resp,true,"Start to generate nodes:"+start.toString());
+		
+		MemoNode startNode = new MemoNode("start");
+		for (int i = 0; i< nofNodes; i++) {
+			MemoNode newNode = new MemoNode(new Integer(i).toString());
+			startNode.addChild(newNode);
+		}
+		time = new Date();
+		log(resp,true,"Storing done in: "+(time.getTime() - start.getTime())+" ms");
+
+		count = 0;
+		Iterator<MemoNode> iter = startNode.getChildren().iterator();
+		// node = Node.find("start");
+		while (iter.hasNext()) {
+			node = iter.next();
+			String value = node.getStringValue();
+			count++;
+		}
+		log(resp,(count==nofNodes),
+				"Count " + count + " counted in:"
+						+ (new Date().getTime() - time.getTime()) + " ms");
+
+		MemoWriteBus.getBus().flush();
 		
 		start = new Date();
 
@@ -198,7 +233,7 @@ public class MemoServlet extends HttpServlet {
 		 * |
 		 * 8
 		*/
-		MemoNode startNode  = new MemoNode("start");
+		startNode  = new MemoNode("start");
 		MemoNode one = new MemoNode("One");
 		startNode.addChild(one);
 		

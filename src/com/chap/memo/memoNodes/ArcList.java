@@ -64,7 +64,6 @@ public class ArcList {
 		ArcOp op=new ArcOp(Ops.ADD, arc, new Date());
 		writeBus.store(op);
 		arcops.add(op);
-		ops2nodes();
 	}
 	public void delNode(UUID other){
 		UUID[] arc = new UUID[2];
