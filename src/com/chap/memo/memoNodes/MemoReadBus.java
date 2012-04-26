@@ -22,16 +22,17 @@ public class MemoReadBus {
 	//Shard caches:
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
 			.synchronizedMap(new MyMap<Key, NodeValueShard>(5, new Float(
-					0.5), true));
+					0.75), true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
 			.synchronizedMap(new MyMap<Key, ArcOpShard>(20, new Float(
-					0.5), true));
+					0.75), true));
 	
 	TreeSet<NodeValueIndex> NodeValueIndexes = new TreeSet<NodeValueIndex>();
 	TreeSet<ArcOpIndex> ArcOpIndexes = new TreeSet<ArcOpIndex>();
 	DatastoreService datastore = null;
 	long lastValueChange= new Date().getTime();
 	long lastOpsChange= new Date().getTime();
+	long lastIndexesRun = 0;
 	
 	private final static MemoReadBus bus = new MemoReadBus();
 	

@@ -8,7 +8,7 @@ import com.eaio.uuid.UUID;
 
 public final class NodeValueShard extends MemoStorable{
 	private static final long serialVersionUID = 7295820980658238258L;
-	static final int SHARDSIZE= 40000;
+	static final int SHARDSIZE= 50000;
 	long oldest=0;
 	long newest=0;
 	
