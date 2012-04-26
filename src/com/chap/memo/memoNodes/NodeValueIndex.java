@@ -28,4 +28,7 @@ public final class NodeValueIndex extends MemoStorable {
 	public NodeValueShard loadShard(){
 		return (NodeValueShard) MemoStorable.load(this.shardKey);
 	}
+	public String toString(){
+		return this.myKey+": "+oldest+"/"+newest+" : "+nodeIds.size()+" - "+this.nanoTime;
+	}
 }

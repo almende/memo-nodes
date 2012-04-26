@@ -63,7 +63,9 @@ public class MemoServlet extends HttpServlet {
 		
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
-
+		try {
+			Thread.sleep(1);
+		} catch (Exception e){};
 		MemoWriteBus.getBus().flush();
 		log(resp,test(first.getStringValue(),title),"Read after flush: "+first.getId()+"/"+first.getStringValue());
 		

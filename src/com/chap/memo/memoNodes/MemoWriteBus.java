@@ -53,18 +53,20 @@ public class MemoWriteBus {
 	
 	public void flushValues(){
 		NodeValueIndex index = new NodeValueIndex(values);
-		MemoReadBus.getBus().NodeValueIndexes.add(0, index);//At the start of the array
+		MemoReadBus.getBus().addValueIndex(index,values);
 		values= new NodeValueShard();
 	}
 	public void flushOps(){
 		ArcOpIndex index = new ArcOpIndex(ops);
-		MemoReadBus.getBus().ArcOpIndexes.add(index);//to the end of the array
+		MemoReadBus.getBus().addOpsIndex(index,ops);
 		ops= new ArcOpShard();
 	}
 	
 	public NodeValue store(UUID id, byte[] value){
-		NodeValue result = new NodeValue(id, value, new Date().getTime());
+		long now = new Date().getTime();
+		NodeValue result = new NodeValue(id, value, now);
 		values.store(result);
+		MemoReadBus.getBus().lastValueChange=now;
 		if (values.nodes.size() >= NodeValueShard.SHARDSIZE){
 				flushValues();
 		}
@@ -72,6 +74,7 @@ public class MemoWriteBus {
 	}
 	public void store(ArcOp op){
 		ops.store(op);
+		MemoReadBus.getBus().lastOpsChange=new Date().getTime();
 		if (ops.children.size() >= ArcOpShard.SHARDSIZE){
 			flushOps();
 		}

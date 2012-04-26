@@ -25,11 +25,12 @@ import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 
-abstract class MemoStorable implements Serializable {
+abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 	private static final long serialVersionUID = -5770613002073776843L;
 	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 	Key myKey = null;
 	long storeTime;
+	long nanoTime;
 	
 	private byte[] serialize() {
 		byte[] result = null;
@@ -83,6 +84,7 @@ abstract class MemoStorable implements Serializable {
 		Entity ent;
 		Key next = null;
 		this.storeTime = storeDate;
+		this.nanoTime = System.nanoTime();
 		
 		byte[] data = this.serialize();
 		int length = data.length;
@@ -163,6 +165,34 @@ abstract class MemoStorable implements Serializable {
 			result.add(load(ent));
 		}
 		return result;
+	}
+	
+	@Override
+	public int compareTo(MemoStorable other){
+		if (myKey != null && other.myKey != null && myKey.equals(other.myKey)){
+			return 0;
+		}
+		if (this.storeTime == other.storeTime){
+			return (int) ((this.nanoTime - other.nanoTime)%Integer.MAX_VALUE);			
+		}
+		return (int) ((this.storeTime - other.storeTime)%Integer.MAX_VALUE);
+	}
+	@Override
+	public boolean equals(Object o){
+		if (o instanceof MemoStorable){
+			MemoStorable other = (MemoStorable)o;
+			if (myKey != null && other.myKey != null && myKey.equals(other.myKey)){
+				return true;
+			}
+			if ((myKey == null || other.myKey == null )&& this.storeTime==other.storeTime){
+				return (this.nanoTime == other.nanoTime);	
+			}
+		}
+		return false;
+	}
+	@Override
+	public int hashCode(){
+		return (int) (myKey.hashCode()*this.nanoTime)%Integer.MAX_VALUE;
 	}
 	
 	private static MemoStorable _unserialize(byte[] data) {

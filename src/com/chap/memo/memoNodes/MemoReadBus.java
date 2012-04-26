@@ -5,8 +5,8 @@ import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeSet;
 
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.DatastoreService;
@@ -16,33 +16,34 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
-import com.google.appengine.api.datastore.Query.SortDirection;
 import com.google.appengine.api.datastore.QueryResultList;
 
 public class MemoReadBus {
 	//Shard caches:
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
-			.synchronizedMap(new MyMap<Key, NodeValueShard>(10, new Float(
+			.synchronizedMap(new MyMap<Key, NodeValueShard>(20, new Float(
 					0.5), true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
-			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(
+			.synchronizedMap(new MyMap<Key, ArcOpShard>(20, new Float(
 					0.5), true));
 	
-	ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
-	ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(1000);
+	TreeSet<NodeValueIndex> NodeValueIndexes = new TreeSet<NodeValueIndex>();
+	TreeSet<ArcOpIndex> ArcOpIndexes = new TreeSet<ArcOpIndex>();
 	DatastoreService datastore = null;
-	
+	long lastValueChange= new Date().getTime();
+	long lastOpsChange= new Date().getTime();
 	
 	private final static MemoReadBus bus = new MemoReadBus();
 	
 	public void loadIndexes(boolean clear, long sinceTimestamp){
-		//TODO, merge new indexes with old ones (Sort ArrayList and remove dups)
 		if (datastore == null) datastore = DatastoreServiceFactory.getDatastoreService();
 		if (clear) {
-			NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
-			ArcOpIndexes = new ArrayList<ArcOpIndex>(1000);
+			NodeValueIndexes.clear();
+			ArcOpIndexes.clear();
+			lastValueChange= new Date().getTime();
+			lastOpsChange= new Date().getTime();
 		}
-		Query q =new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
+		Query q =new Query("NodeValueIndex").addSort("timestamp");
 		if (sinceTimestamp > 0){
 			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, sinceTimestamp);
 		}
@@ -53,6 +54,7 @@ public class MemoReadBus {
 				NodeValueIndex index = (NodeValueIndex) MemoStorable.load(ent);
 				NodeValueIndexes.add(index);
 			}
+			lastValueChange= new Date().getTime();
 		}
 		
 		q = new Query("ArcOpIndex").addSort("timestamp");
@@ -66,10 +68,21 @@ public class MemoReadBus {
 				ArcOpIndex index = (ArcOpIndex) MemoStorable.load(ent);
 				ArcOpIndexes.add(index);
 			}
+			lastOpsChange= new Date().getTime();
 		}
 	
 	}
 	
+	public void addValueIndex(NodeValueIndex index,NodeValueShard shard){
+		NodeValueShards.put(index.shardKey, shard);
+		NodeValueIndexes.add(index);
+		lastValueChange= new Date().getTime();
+	}
+	public void addOpsIndex(ArcOpIndex index,ArcOpShard shard){
+		ArcOpShards.put(index.shardKey, shard);
+		ArcOpIndexes.add(index);
+		lastOpsChange= new Date().getTime();
+	}
 	private MemoReadBus(){
 		loadIndexes(false,0);
 	};
@@ -79,12 +92,10 @@ public class MemoReadBus {
 	}
 	
 	public boolean valueChanged(long timestamp){
-		//TODO
-		return false;
+		return timestamp<=lastValueChange;
 	}
 	public boolean opsChanged(long timestamp){
-		//TODO
-		return false;
+		return timestamp<=lastOpsChange;
 	}
 	
 	public MemoNode find(UUID uuid){
@@ -95,11 +106,9 @@ public class MemoReadBus {
 	}
 	public ArrayList<MemoNode> findAll(UUID uuid){
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(100);
-		Query q = new Query("NodeValueIndex").addSort("timestamp", SortDirection.DESCENDING);
-		PreparedQuery pq = datastore.prepare(q);
-		Iterator<Entity> iter = pq.asIterator();
-		while (iter.hasNext()){
-			NodeValueIndex index = (NodeValueIndex) MemoStorable.load(iter.next());
+		if (NodeValueIndexes.size() <=0) return result;
+		NodeValueIndex index = NodeValueIndexes.last();
+		while (index != null){
 			if (index.nodeIds.contains(uuid)){
 				NodeValueShard shard;
 				synchronized(NodeValueShards){
@@ -111,10 +120,10 @@ public class MemoReadBus {
 				}
 				NodeValueShards.put(shard.myKey,shard);
 				for (NodeValue nv : shard.findAll(uuid)){
-					//TODO:Moet eigenlijk nog sorteren op tijd
 					result.add(new MemoNode(nv));
 				}
 			}
+			index = NodeValueIndexes.lower(index);	
 		}
 		Collections.sort(result);
 		return result;
@@ -128,9 +137,8 @@ public class MemoReadBus {
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
 		result = writeBus.values.findBefore(uuid, timestamp);
 		
-		int indexCnt = 0;
-		if (indexCnt >= NodeValueIndexes.size()) return result;
-		NodeValueIndex index = NodeValueIndexes.get(indexCnt++);
+		if (NodeValueIndexes.size() == 0) return result;
+		NodeValueIndex index = NodeValueIndexes.last();
 		while (index != null && (result == null || index.newest > result.getTimestamp_long())){
 			if (index.oldest < timestamp && index.nodeIds.contains(uuid)){
 				NodeValueShard shard=null;
@@ -148,11 +156,7 @@ public class MemoReadBus {
 					result = res;
 				}
 			}
-			if (indexCnt >= NodeValueIndexes.size()){
-				//TODO: load more indexes;
-			} else {
-				index = NodeValueIndexes.get(indexCnt++);
-			}
+			index = NodeValueIndexes.lower(index);
 		}		
 		return result;
 	}
@@ -162,9 +166,9 @@ public class MemoReadBus {
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);	
 		
-		Iterator<ArcOpIndex> iter = ArcOpIndexes.iterator();
-		while (iter.hasNext()){
-			ArcOpIndex index = iter.next();
+		if (ArcOpIndexes.size() <=0) return result;
+		ArcOpIndex index = ArcOpIndexes.first();
+		while (index != null){
 			switch (type){
 			case 0: //parentList, UUID is child
 				if (index.children.contains(uuid)){
@@ -204,7 +208,8 @@ public class MemoReadBus {
 					}	
 				}
 				break;
-			}			
+			}
+			index = ArcOpIndexes.higher(index);
 		}
 		switch (type){
 		case 0: //parentList, UUID is child
