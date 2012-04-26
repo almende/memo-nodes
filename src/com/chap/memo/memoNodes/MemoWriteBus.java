@@ -49,6 +49,7 @@ public class MemoWriteBus {
 	public void flush(){
 		flushValues();
 		flushOps();
+		MemoReadBus.getBus().updateIndexes();
 	}
 	
 	public void flushValues(){

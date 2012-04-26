@@ -36,6 +36,9 @@ public class MemoReadBus {
 	
 	private final static MemoReadBus bus = new MemoReadBus();
 	
+	public void updateIndexes(){
+		loadIndexes(false,lastIndexesRun-10000);
+	}
 	public void loadIndexes(boolean clear, long sinceTimestamp){
 		if (datastore == null) datastore = DatastoreServiceFactory.getDatastoreService();
 		if (clear) {
