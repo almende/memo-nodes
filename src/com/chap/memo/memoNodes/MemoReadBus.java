@@ -21,7 +21,7 @@ import com.google.appengine.api.datastore.QueryResultList;
 public class MemoReadBus {
 	//Shard caches:
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
-			.synchronizedMap(new MyMap<Key, NodeValueShard>(20, new Float(
+			.synchronizedMap(new MyMap<Key, NodeValueShard>(5, new Float(
 					0.5), true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
 			.synchronizedMap(new MyMap<Key, ArcOpShard>(20, new Float(
