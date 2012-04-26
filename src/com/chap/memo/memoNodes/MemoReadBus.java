@@ -24,7 +24,7 @@ public class MemoReadBus {
 			.synchronizedMap(new MyMap<Key, NodeValueShard>(5, new Float(
 					0.75), true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
-			.synchronizedMap(new MyMap<Key, ArcOpShard>(20, new Float(
+			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(
 					0.75), true));
 	
 	TreeSet<NodeValueIndex> NodeValueIndexes = new TreeSet<NodeValueIndex>();
