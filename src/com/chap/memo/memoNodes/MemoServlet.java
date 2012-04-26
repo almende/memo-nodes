@@ -162,7 +162,7 @@ public class MemoServlet extends HttpServlet {
 		int count = 0;
 		// node = Node.find("start");
 		while (node != null) {
-			String value = node.getStringValue();
+			//String value = node.getStringValue();
 			//System.out.println(value+ ":" + node.getChildren().size());
 			ArrayList<MemoNode> children = node.getChildren();
 			if (children.isEmpty()) {
@@ -206,7 +206,7 @@ public class MemoServlet extends HttpServlet {
 		// node = Node.find("start");
 		while (iter.hasNext()) {
 			node = iter.next();
-			String value = node.getStringValue();
+			//String value = node.getStringValue();
 			count++;
 		}
 		log(resp,(count==nofNodes),

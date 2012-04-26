@@ -17,6 +17,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
 	long lastUpdate= new Date().getTime();
 	
+	private UUID uuid;
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
@@ -50,12 +51,19 @@ public class MemoNode implements Comparable<MemoNode> {
 		}
 	}
 
+	public MemoNode(UUID uuid){
+		this.uuid=uuid;
+		this.parents=new ArcList(uuid,0);
+		this.children=new ArcList(uuid,1);		
+	}
 	public MemoNode(NodeValue value, ArcList parents, ArcList children){
+		this.uuid = value.getId();
 		this.value=value;
 		this.parents=parents;
 		this.children=children;
 	}
 	public MemoNode(UUID id, byte[] value, UUID[] children, UUID[] parents){
+		this.uuid=id;
 		this.value=writeBus.store(id, value);
 		this.parents=new ArcList(id,0);
 		this.children=new ArcList(id,1);
@@ -67,35 +75,40 @@ public class MemoNode implements Comparable<MemoNode> {
 		}
 	}
 	public MemoNode(NodeValue value){
+		this.uuid=value.getId();
 		this.value=value;		
-		this.parents=new ArcList(value.getId(),0);
-		this.children=new ArcList(value.getId(),1);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
 	public MemoNode(byte[] value){
-		this.value=writeBus.store(new UUID(), value);
-		this.parents=new ArcList(this.value.getId(),0);
-		this.children=new ArcList(this.value.getId(),1);
+		this.uuid=new UUID();
+		this.value=writeBus.store(this.uuid, value);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
 	public MemoNode(String value){
-		this.value=writeBus.store(new UUID(), value.getBytes());		
-		this.parents=new ArcList(this.value.getId(),0);
-		this.children=new ArcList(this.value.getId(),1);
+		this.uuid=new UUID();
+		this.value=writeBus.store(this.uuid, value.getBytes());
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
 	public MemoNode(UUID uuid,byte[] value){
+		this.uuid=uuid;
 		this.value=writeBus.store(uuid, value);
-		this.parents=new ArcList(this.value.getId(),0);
-		this.children=new ArcList(this.value.getId(),1);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
 	public MemoNode(UUID uuid,String value){
+		this.uuid=uuid;
 		this.value=writeBus.store(uuid, value.getBytes());		
-		this.parents=new ArcList(this.value.getId(),0);
-		this.children=new ArcList(this.value.getId(),1);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
 	public void update(byte[] value){
-		this.value=writeBus.store(this.value.getId(), value);
+		this.value=writeBus.store(this.getId(), value);
 	}
 	public void update(String value){
-		this.value=writeBus.store(this.value.getId(), value.getBytes());
+		this.value=writeBus.store(this.getId(), value.getBytes());
 	}
 	public void addParent(UUID parent){
 		parents.addNode(parent);
@@ -124,7 +137,7 @@ public class MemoNode implements Comparable<MemoNode> {
 
 	public byte[] getValue(){
 		if (this.value == null || readBus.valueChanged(lastUpdate)){
-			this.value=readBus.getValue(this.value.getId());
+			this.value=readBus.getValue(this.uuid);
 			lastUpdate=new Date().getTime();
 		}
 		return this.value.getValue();
@@ -144,7 +157,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result;
 	}
 	public UUID getId(){
-		return this.value.getId();
+		return this.uuid;
 	}
 	public long getTimestamp(){
 		return Math.max(this.value.getTimestamp_long(),Math.max(this.children.getTimestamp_long(),this.parents.getTimestamp_long()));
@@ -364,7 +377,7 @@ public class MemoNode implements Comparable<MemoNode> {
 
 		result.nodes.add(new JSONObject().
 						 element("id",this.getId().toString()).
-						 element("title", this.getValue()));
+						 element("title", this.getStringValue()));
 
 		return result;
 	}

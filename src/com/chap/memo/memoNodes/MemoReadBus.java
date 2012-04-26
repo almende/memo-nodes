@@ -74,7 +74,6 @@ public class MemoReadBus {
 			}
 			lastOpsChange= new Date().getTime();
 		}
-	
 	}
 	
 	public void addValueIndex(NodeValueIndex index,NodeValueShard shard){

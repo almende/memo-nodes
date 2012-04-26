@@ -46,7 +46,7 @@ public class ArcList {
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
 				this.nodes.length);
 		for (UUID id : this.nodes) {
-			result.add(readBus.find(id));
+			result.add(new MemoNode(id));
 		}
 		return result;
 	}
