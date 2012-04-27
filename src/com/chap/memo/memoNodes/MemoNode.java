@@ -268,7 +268,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	
 	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare,
 						     ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, 
-						     ArrayList<MemoNode> patterns, int topX){
+						     ArrayList<MemoNode> patterns, int topX, HashMap<String> arguments){
 		
 		MemoNode step = query.node;
 		//System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
@@ -320,7 +320,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 
 	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
-			ArrayList<MemoNode> patterns, int topx) {
+			ArrayList<MemoNode> patterns, int topx, HashMap<String> arguments) {
 
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?Math.min(200,topx):200);
 		HashSet<MemoNode> seenNodes = new HashSet<MemoNode>(200);
@@ -331,7 +331,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		}
 		
 		for (MemoNode preamble : preambles) {
-			doStep(true,MemoQuery.parseQuery(preamble.getChildren().get(0)),(MemoNode) this,result,seenNodes,patterns,topx);
+			doStep(true,MemoQuery.parseQuery(preamble.getChildren().get(0),arguments),(MemoNode) this,result,seenNodes,patterns,topx,arguments);
 		}
 		return result;
 	}
@@ -392,6 +392,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 	MemoNode node = null;
 	Type type = Type.Equal;
 	String value = "";
+	boolean hasArg=false;
 	java.util.regex.Pattern regex = null;
 	int lower = 0;
 	int upper = 0;
@@ -401,9 +402,12 @@ class MemoQuery implements Comparable<MemoQuery> {
 		return this.type.compareTo(arg0.type);
 	}
 
-	public static MemoQuery parseQuery(MemoNode step) {
+	public static MemoQuery parseQuery(MemoNode step,HashMap<String> arguments) {
 		if (queryCache.containsKey(step)) {
-			return queryCache.get(step);
+			MemoQuery cached = queryCache.get(step);
+			if (!cached.hasArg){
+				return cached;
+			};
 		}
 		MemoQuery result = new MemoQuery();
 		result.node = step;
@@ -413,6 +417,10 @@ class MemoQuery implements Comparable<MemoQuery> {
 		} else if (query.startsWith("equal;")) {
 			result.type = MemoQuery.Type.Equal;
 			result.value = query.substring(6);
+			if (result.value.startsWith("arg(")){
+				result.value=arguments.get(result.value.substring(4,result.value.length-1));
+				result.hasArg=true;
+			}
 		} else if (query.startsWith("regex;")) {
 			result.type = MemoQuery.Type.Regex;
 			result.regex = Pattern.compile(query.substring(6));
@@ -424,8 +432,12 @@ class MemoQuery implements Comparable<MemoQuery> {
 		} else {
 			result.type = MemoQuery.Type.Equal;
 			result.value = query;
+			if (result.value.startsWith("arg(")){
+				result.value=arguments.get(result.value.substring(4,result.value.length-1));
+				result.hasArg=true;
+			}
 		}
-		queryCache.put(step, result);
+		if (!result.hasArg) queryCache.put(step, result);
 		return result;
 	}
 
