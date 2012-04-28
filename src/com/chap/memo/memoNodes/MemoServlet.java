@@ -3,6 +3,7 @@ package com.chap.memo.memoNodes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServlet;
@@ -33,9 +34,9 @@ public class MemoServlet extends HttpServlet {
 		if (cleanDBParm != null) {
 			MemoWriteBus.emptyDB();
 			log(resp,true,"Database cleared!");
-		}
-		if (cleanDBParm.equals("only")) return;
 		
+			if (cleanDBParm.equals("only")) return;
+		}
 		//Add single node
 		String title="First node";
 		MemoNode first = new MemoNode(title);
@@ -225,7 +226,7 @@ public class MemoServlet extends HttpServlet {
 		 *   >--1    2               Pattern  -- 5 -- 8
 		 *   | / \  / \                (three 5's should be matched in the diagram to the left)
 		 *   |/   3    4
-		 *   3    |   / \
+		 *   3    | \ / \
 		 *   |    5  5   5
 		 *   6    |  |   |
 		 *  / \   8  7   8
@@ -270,6 +271,7 @@ public class MemoServlet extends HttpServlet {
 		five2.addChild(eight2);
 		
 		MemoNode five3 = new MemoNode("Five");
+		three2.addChild(five3);
 		four.addChild(five3);
 		
 		MemoNode seven2 = new MemoNode("Seven");
@@ -288,7 +290,7 @@ public class MemoServlet extends HttpServlet {
 		MemoNode patFive = new MemoNode("equal;Five");
 		pattern.addChild(patFive);
 		
-		MemoNode patEight = new MemoNode("equal;Eight");
+		MemoNode patEight = new MemoNode("equal;arg(Number)");
 		patFive.addChild(patEight);
 		
 		MemoNode preAmble = new MemoNode("PreAmble");
@@ -300,11 +302,11 @@ public class MemoServlet extends HttpServlet {
 		MemoNode PreOne = new MemoNode("equal;One");
 		PreStart.addChild(PreOne);
 		
-		MemoNode PreThree = new MemoNode("equal;Three");
-		PreOne.addChild(PreThree);
+		MemoNode PreTwo = new MemoNode("equal;Three");
+		PreOne.addChild(PreTwo);
 		
 		MemoNode preAny = new MemoNode("any");
-		PreThree.addChild(preAny);
+		PreTwo.addChild(preAny);
 		
 		preAny.addChild(preAny); // Spannend:)
 
@@ -313,21 +315,24 @@ public class MemoServlet extends HttpServlet {
 								+ " ms");
 		start = time;
 
-		ArrayList<MemoNode> result = startNode.search(algorithm, -1);
+		HashMap<String,String> arguments = new HashMap<String,String>(2);
+		arguments.put("Number","Eight");
+		ArrayList<MemoNode> result = startNode.search(algorithm, -1,arguments);
 		for (MemoNode res : result) {
 			log(resp,true,"Found 1: " + res.getStringValue() +"/"+ res.getId());
 		}
 		time = new Date();
-		log(resp,test(new Integer(result.size()).toString(),"2"),"Search 1 done in " + (time.getTime() - start.getTime())
+		log(resp,result.size()==2,"Search 1 done in " + (time.getTime() - start.getTime())
 						+ " ms");
 		start = time;
 
-		result = startNode.search(algorithm, 2); // topx = 2
+		arguments.put("Number","Seven");
+		result = startNode.search(algorithm, 2,arguments); // topx = 2
 		for (MemoNode res : result) {
 			log(resp,true,"Found 2: " + res.getStringValue() +"/"+ res.getId());
 		}
 		time = new Date();
-		log(resp,test(new Integer(result.size()).toString(),"2"),"Search 2 done in " + (time.getTime() - start.getTime())
+		log(resp,result.size()==1,"Search 2 done in " + (time.getTime() - start.getTime())
 						+ " ms");
 	}	
 }

@@ -268,7 +268,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	
 	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare,
 						     ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, 
-						     ArrayList<MemoNode> patterns, int topX, HashMap<String> arguments){
+						     ArrayList<MemoNode> patterns, int topX, HashMap<String,String> arguments){
 		
 		MemoNode step = query.node;
 		//System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
@@ -277,8 +277,8 @@ public class MemoNode implements Comparable<MemoNode> {
 		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
 		if (preamble) {
 			for (MemoNode pattern : patterns){
-				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0)),
-									   toCompare,null,new HashSet<MemoNode>(),null,0);
+				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0), arguments),
+									   toCompare,null,new HashSet<MemoNode>(),null,0,arguments);
 				if (res.matched){
 					results.add(toCompare);
 					return new StepState(true,"Node matches pattern! Added to result, no need to search deeper.",query,toCompare);
@@ -297,7 +297,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
 		HashSet<MemoQuery> foundQueries = new HashSet<MemoQuery>(toMatchNo);
 		for (MemoNode nextPat : nextPats) {
-			queries.add(MemoQuery.parseQuery(nextPat));
+			queries.add(MemoQuery.parseQuery(nextPat, arguments));
 		}
 		MemoQuery[] queryArray = { new MemoQuery() };
 		queryArray = queries.toArray(queryArray);
@@ -306,7 +306,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		for (MemoNode child : children) {
 			for (MemoQuery iQuery : queryArray) {
 				if (foundQueries.contains(iQuery)) continue;
-				StepState res = doStep(preamble,iQuery,child,results,seenNodes,patterns,topX);
+				StepState res = doStep(preamble,iQuery,child,results,seenNodes,patterns,topX, arguments);
 				
 				if (topX > 0 && results.size() >= topX) return new StepState(true,"TopX results reached, returning!",query,toCompare);
 				if (preamble || !res.isMatched()) continue;
@@ -320,7 +320,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 
 	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
-			ArrayList<MemoNode> patterns, int topx, HashMap<String> arguments) {
+			ArrayList<MemoNode> patterns, int topx, HashMap<String,String> arguments) {
 
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?Math.min(200,topx):200);
 		HashSet<MemoNode> seenNodes = new HashSet<MemoNode>(200);
@@ -336,21 +336,21 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result;
 	}
 
-	public ArrayList<MemoNode> search(MemoNode algorithm, int topx) {
+	public ArrayList<MemoNode> search(MemoNode algorithm, int topx, HashMap<String,String> arguments) {
 		ArrayList<MemoNode> preambles = algorithm.getChildrenByStringValue(
 				"PreAmble", -1);
 		ArrayList<MemoNode> patterns = algorithm.getChildrenByStringValue("Pattern",
 				-1);
-		return this.search(preambles, patterns, topx);
+		return this.search(preambles, patterns, topx, arguments);
 	}
 
 	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
-			int topx) {
+			int topx, HashMap<String,String> arguments) {
 		ArrayList<MemoNode> preambles = new ArrayList<MemoNode>(1);
 		preambles.add(preamble);
 		ArrayList<MemoNode> patterns = new ArrayList<MemoNode>(1);
 		patterns.add(pattern);
-		return this.search(preambles, patterns, topx);
+		return this.search(preambles, patterns, topx, arguments);
 	}
 
 	public String toJSONString(int depth){
@@ -402,7 +402,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 		return this.type.compareTo(arg0.type);
 	}
 
-	public static MemoQuery parseQuery(MemoNode step,HashMap<String> arguments) {
+	public static MemoQuery parseQuery(MemoNode step,HashMap<String,String> arguments) {
 		if (queryCache.containsKey(step)) {
 			MemoQuery cached = queryCache.get(step);
 			if (!cached.hasArg){
@@ -418,7 +418,8 @@ class MemoQuery implements Comparable<MemoQuery> {
 			result.type = MemoQuery.Type.Equal;
 			result.value = query.substring(6);
 			if (result.value.startsWith("arg(")){
-				result.value=arguments.get(result.value.substring(4,result.value.length-1));
+				result.value=arguments.get(result.value.substring(4,result.value.length()-1));
+				//System.out.println("Setting arg value to:"+result.value);
 				result.hasArg=true;
 			}
 		} else if (query.startsWith("regex;")) {
@@ -433,7 +434,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 			result.type = MemoQuery.Type.Equal;
 			result.value = query;
 			if (result.value.startsWith("arg(")){
-				result.value=arguments.get(result.value.substring(4,result.value.length-1));
+				result.value=arguments.get(result.value.substring(4,result.value.length()-1));
 				result.hasArg=true;
 			}
 		}
@@ -444,6 +445,7 @@ class MemoQuery implements Comparable<MemoQuery> {
 	public boolean match(MemoNode node) {
 		switch (this.type) {
 		case Equal:
+			//System.out.println("Checking "+node.getId()+":"+node.getStringValue()+" against "+this.value);
 			return node.getStringValue().equals(this.value);
 		case Regex:
 			return this.regex.matcher(node.getStringValue()).matches();
