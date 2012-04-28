@@ -25,7 +25,6 @@ public class MemoWriteBus {
 		return bus;
 	}
 
-	
 	static public void emptyDB() {
 		// create one big cleanup query
 		String[] types = { "NodeValueIndex","ArcOpIndex","NodeValueShard","ArcOpShard" };
@@ -53,14 +52,18 @@ public class MemoWriteBus {
 	}
 	
 	public void flushValues(){
-		NodeValueIndex index = new NodeValueIndex(values);
-		MemoReadBus.getBus().addValueIndex(index,values);
-		values= new NodeValueShard();
+		synchronized(values.nodes){
+			NodeValueIndex index = new NodeValueIndex(values);
+			MemoReadBus.getBus().addValueIndex(index,values);
+			values= new NodeValueShard();
+		}
 	}
 	public void flushOps(){
-		ArcOpIndex index = new ArcOpIndex(ops);
-		MemoReadBus.getBus().addOpsIndex(index,ops);
-		ops= new ArcOpShard();
+		synchronized(ops){
+			ArcOpIndex index = new ArcOpIndex(ops);
+			MemoReadBus.getBus().addOpsIndex(index,ops);
+			ops= new ArcOpShard();
+		}
 	}
 	
 	public NodeValue store(UUID id, byte[] value){

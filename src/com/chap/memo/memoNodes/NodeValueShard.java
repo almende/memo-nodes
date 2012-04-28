@@ -33,7 +33,9 @@ public final class NodeValueShard extends MemoStorable{
 			cur = new ArrayList<NodeValue>(3);
 			cur.add(nodeVal);
 		}
-		nodes.put(nodeVal.getId(), cur);
+		synchronized(nodes){
+			nodes.put(nodeVal.getId(), cur);
+		}
 		if (newest == 0 || nodeVal.getTimestamp_long()>newest) newest = nodeVal.getTimestamp_long();
 		if (oldest == 0 || nodeVal.getTimestamp_long()<oldest) oldest = nodeVal.getTimestamp_long();
 	}

@@ -140,10 +140,12 @@ public class MemoNode implements Comparable<MemoNode> {
 			this.value=readBus.getValue(this.uuid);
 			lastUpdate=new Date().getTime();
 		}
-		return this.value.getValue();
+		return this.value == null?null:this.value.getValue();
 	}
 	public String getStringValue(){
-		return new String(getValue());
+		byte[] res = getValue();
+		if (res != null) return new String(getValue());
+		return "";
 	}
 	public byte[] valueAt(long timestamp){
 		NodeValue oldValue = readBus.getValue(getId(), timestamp);

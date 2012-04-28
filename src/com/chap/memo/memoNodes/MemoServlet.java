@@ -19,10 +19,9 @@ public class MemoServlet extends HttpServlet {
 	}
 	private void log(HttpServletResponse resp, boolean ok, String shortMsg, String msg){
 		try {
-			resp.getWriter().println((ok?"[OK]":"!!!ERROR!!!")+"  -   "+shortMsg + (!debug||msg==null?"":msg));
+			resp.getWriter().println((ok?"---":"!E!")+"  -   "+shortMsg + (!debug||msg==null?"":msg));
 			resp.flushBuffer();
 		} catch (IOException e) {
-			e.printStackTrace();
 		}
 		System.out.println(shortMsg+(!debug||msg==null?"":msg));
 	}
@@ -37,7 +36,7 @@ public class MemoServlet extends HttpServlet {
 		String cleanDBParm = req.getParameter("cleanDB");
 		if (cleanDBParm != null) {
 			MemoWriteBus.emptyDB();
-			log(resp,true,"Database cleared!");
+			log(resp,true,"\nDatabase cleared!");
 		
 			if (cleanDBParm.equals("only")) return;
 		}
@@ -45,7 +44,8 @@ public class MemoServlet extends HttpServlet {
 		if (debugStr != null){
 			debug=true;
 		}
-		log(resp,true,"Starting single node tests:");
+		log(resp,debugStr != null,debugStr);
+		log(resp,true,"\nStarting single node tests:");
 		//Add single node
 		String title="First node";
 		MemoNode first = new MemoNode(title);	
@@ -60,6 +60,7 @@ public class MemoServlet extends HttpServlet {
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
 		
+		log(resp,true,"\nUpdating node value:");
 		title="Updated node value";
 		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
@@ -67,6 +68,7 @@ public class MemoServlet extends HttpServlet {
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 
+		log(resp,true,"\nAgain updating node value:");
 		title="New updated node value";
 		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
@@ -80,7 +82,7 @@ public class MemoServlet extends HttpServlet {
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
 		
-		log(resp,true,"Multi nodal tests: (Adding one child)");
+		log(resp,true,"\nMulti nodal tests: (Adding one child)");
 		
 		title = "First node";
 		first.update(title);
@@ -102,7 +104,7 @@ public class MemoServlet extends HttpServlet {
 		second.update(secondTitle);
 		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Updated child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		
-		log(resp,true,"Multi nodal tests: (Adding a second child)");
+		log(resp,true,"\nMulti nodal tests: (Adding a second child)");
 		String thirdTitle="Third Node";
 		MemoNode third = new MemoNode(thirdTitle);
 		
@@ -116,7 +118,7 @@ public class MemoServlet extends HttpServlet {
 
 		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found",": "+third.getParents().get(0).getStringValue());
 		
-		log(resp,true,"Remove child and re-adding it (within same Arcop shard):");
+		log(resp,true,"\nRemove child and re-adding it (within same Arcop shard):");
 		first.delChild(third);
 		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
@@ -132,7 +134,7 @@ public class MemoServlet extends HttpServlet {
 		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 
-		log(resp,true,"Remove child and re-adding it (in multiple Arcop shards):");
+		log(resp,true,"\nRemove child and re-adding it (in multiple Arcop shards):");
 		first.delChild(second);
 		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
 		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
@@ -158,7 +160,7 @@ public class MemoServlet extends HttpServlet {
 			}
 		}
 		Date start = new Date();
-		log(resp,true,"Performance test: Depth");
+		log(resp,true,"\nPerformance test: Depth");
 		
 		MemoNode node = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
@@ -186,7 +188,7 @@ public class MemoServlet extends HttpServlet {
 			node = children.get(0);
 		}
 		log(resp,(count==nofNodes),
-				"Count " + count + " counted in:"
+				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
 		MemoWriteBus.getBus().flush();
@@ -201,7 +203,7 @@ public class MemoServlet extends HttpServlet {
 			}
 		}
 		start = new Date();
-		log(resp,true,"Performance test: Breadth");
+		log(resp,true,"\nPerformance test: Breadth");
 		
 		MemoNode startNode = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
@@ -220,14 +222,14 @@ public class MemoServlet extends HttpServlet {
 			count++;
 		}
 		log(resp,(count==nofNodes),
-				"Count " + count + " counted in:"
+				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 
 		MemoWriteBus.getBus().flush();
 		
 		start = new Date();
 
-		log(resp,true,"Starting to generate test set:");
+		log(resp,true,"\nPattern search test:");
 
 		/*                                        _
 		 *      start                            \ /
@@ -320,7 +322,7 @@ public class MemoServlet extends HttpServlet {
 		preAny.addChild(preAny); // Spannend:)
 
 		time = new Date();
-		log(resp,true,"Pattern Storing done in " + (time.getTime() - start.getTime())
+		log(resp,true,"Pattern stored in " + (time.getTime() - start.getTime())
 								+ " ms");
 		start = time;
 
@@ -347,5 +349,7 @@ public class MemoServlet extends HttpServlet {
 		time = new Date();
 		log(resp,result.size()==1,"Search 2 done in " + (time.getTime() - start.getTime())
 						+ " ms");
+
+		log(resp,true,"\nAll tests done!");
 	}	
 }

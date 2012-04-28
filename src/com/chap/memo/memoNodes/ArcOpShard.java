@@ -19,14 +19,18 @@ public final class ArcOpShard extends MemoStorable {
 			cur = new ArrayList<ArcOp>(3);
 		}
 		cur.add(ops);
-		parents.put(ops.getParent(), cur);
+		synchronized(this){
+			parents.put(ops.getParent(), cur);
+		}
 		
 		cur = children.get(ops.getChild());
 		if (cur == null) {
 			cur = new ArrayList<ArcOp>(3);
 		}
 		cur.add(ops);
-		children.put(ops.getChild(), cur);
+		synchronized(this){
+			children.put(ops.getChild(), cur);
+		}
 		currentSize+=2;
 	}
 	
