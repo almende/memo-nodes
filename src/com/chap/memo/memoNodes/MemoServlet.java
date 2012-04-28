@@ -23,7 +23,7 @@ public class MemoServlet extends HttpServlet {
 			resp.flushBuffer();
 		} catch (IOException e) {
 		}
-		System.out.println(shortMsg+(!debug||msg==null?"":msg));
+		System.out.println(shortMsg+(msg==null?"":msg));
 	}
 	private boolean test(String compare, String result){
 		return compare.equals(result);
@@ -32,6 +32,7 @@ public class MemoServlet extends HttpServlet {
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
+		debug = false;
 		resp.setContentType("text/plain");
 		String cleanDBParm = req.getParameter("cleanDB");
 		if (cleanDBParm != null) {
@@ -41,10 +42,10 @@ public class MemoServlet extends HttpServlet {
 			if (cleanDBParm.equals("only")) return;
 		}
 		String debugStr = req.getParameter("debug");
-		if (debugStr != null){
+		if (debugStr != null && !debugStr.equals("null")){
 			debug=true;
 		}
-		log(resp,debugStr != null,debugStr);
+		if (debug) System.out.println("Outputting debug info:"+debugStr);
 		log(resp,true,"\nStarting single node tests:");
 		//Add single node
 		String title="First node";

@@ -75,8 +75,13 @@ public class MemoNode implements Comparable<MemoNode> {
 		}
 	}
 	public MemoNode(NodeValue value){
-		this.uuid=value.getId();
-		this.value=value;		
+		if (value!=null){
+			this.uuid=value.getId();
+			this.value=value;
+		} else {
+			this.uuid=new UUID();
+			this.value=null;
+		}
 		this.parents=new ArcList(this.uuid,0);
 		this.children=new ArcList(this.uuid,1);
 	}
