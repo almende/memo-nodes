@@ -12,15 +12,19 @@ import javax.servlet.http.HttpServletResponse;
 
 @SuppressWarnings("serial")
 public class MemoServlet extends HttpServlet {
-
-	private void log(HttpServletResponse resp, boolean ok, String msg){
+	boolean debug = false;
+	
+	private void log(HttpServletResponse resp, boolean ok, String shortMsg){
+		log(resp,ok,shortMsg,null);
+	}
+	private void log(HttpServletResponse resp, boolean ok, String shortMsg, String msg){
 		try {
-			resp.getWriter().println((ok?"[OK]":"!!!ERROR!!!")+"  -   "+msg);
+			resp.getWriter().println((ok?"[OK]":"!!!ERROR!!!")+"  -   "+shortMsg + (!debug||msg==null?"":msg));
 			resp.flushBuffer();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		System.out.println(msg);
+		System.out.println(shortMsg+(!debug||msg==null?"":msg));
 	}
 	private boolean test(String compare, String result){
 		return compare.equals(result);
@@ -37,42 +41,46 @@ public class MemoServlet extends HttpServlet {
 		
 			if (cleanDBParm.equals("only")) return;
 		}
+		String debugStr = req.getParameter("debug");
+		if (debugStr != null){
+			debug=true;
+		}
+		log(resp,true,"Starting single node tests:");
 		//Add single node
 		String title="First node";
-		MemoNode first = new MemoNode(title);
-		
-		log(resp,test(first.getStringValue(),title),"Node written and read:"+first.getStringValue());
+		MemoNode first = new MemoNode(title);	
+		log(resp,test(first.getStringValue(),title),"Write/Read cycle",":"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
-		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 		
 		MemoWriteBus.getBus().flush();
-		log(resp,test(first.getStringValue(),title),"Read after flush: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Read after flush",": "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
-		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
+		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
 		
-		title="New Value (First node)";
+		title="Updated node value";
 		first.update(title);
-		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
-		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 
-		title="double new Value in same shard (First node)";
+		title="New updated node value";
 		first.update(title);
-		log(resp,test(first.getStringValue(),title),"Node new value and read: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
-		log(resp,test(first.getStringValue(),title),"Node found: "+first.getId()+"/"+first.getStringValue());
-		try {
-			Thread.sleep(1);
-		} catch (Exception e){};
+		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
+		
 		MemoWriteBus.getBus().flush();
-		log(resp,test(first.getStringValue(),title),"Read after flush: "+first.getId()+"/"+first.getStringValue());
+		log(resp,test(first.getStringValue(),title),"Read after flush",": "+first.getId()+"/"+first.getStringValue());
 		
 		first = MemoReadBus.getBus().find(first.getId());
-		log(resp,test(first.getStringValue(),title),"Node found after flush: "+first.getId()+"/"+first.getStringValue());		
+		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
+		
+		log(resp,true,"Multi nodal tests: (Adding one child)");
 		
 		title = "First node";
 		first.update(title);
@@ -81,63 +89,64 @@ public class MemoServlet extends HttpServlet {
 		MemoNode second = new MemoNode(secondTitle);
 		
 		first.addChild(second);
-		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==1),"Child has one parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		
 		MemoWriteBus.getBus().flush();
 		second = MemoReadBus.getBus().find(first.getId()).getChildren().get(0);
-		log(resp,test(second.getStringValue(),secondTitle),"Child found after flush: "+second.getId()+"/"+second.getStringValue());		
+		log(resp,test(second.getStringValue(),secondTitle),"Child found after flush",": "+second.getId()+"/"+second.getStringValue());		
 		
 		secondTitle = "Second node (new Value)";
 		second.update(secondTitle);
-		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Updated child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Updated child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		
+		log(resp,true,"Multi nodal tests: (Adding a second child)");
 		String thirdTitle="Third Node";
 		MemoNode third = new MemoNode(thirdTitle);
 		
 		first.addChild(third);
-		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,(third.getParents().size()==1),"Child has parents:"+third.getId()+":"+third.getParents().size());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+		log(resp,(first.getChildren().size()==2),"Parent has two children",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==1),"First child has one parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,(third.getParents().size()==1),"Second child has one parent",":"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+
+		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found",": "+third.getParents().get(0).getStringValue());
 		
-		log(resp,test(third.getParents().get(0).getStringValue(),title),"Parent found: "+third.getParents().get(0).getStringValue());
-		
-		log(resp,true,"Same shard OPS delete and add again:");
+		log(resp,true,"Remove child and re-adding it (within same Arcop shard):");
 		first.delChild(third);
-		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,(third.getParents().size()==0),"Child has parents:"+third.getId()+":"+third.getParents().size());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==1),"First child has one parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,(third.getParents().size()==0),"Second child has no parent",":"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 
 		first.addChild(third);
-		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,(third.getParents().size()==1),"Child has parents:"+third.getId()+":"+third.getParents().size());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+		log(resp,(first.getChildren().size()==2),"Parent has two children",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==1),"First child has one parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,(third.getParents().size()==1),"Second child has one parent",":"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 
-		log(resp,true,"Older shard OPS delete and add again:");
+		log(resp,true,"Remove child and re-adding it (in multiple Arcop shards):");
 		first.delChild(second);
-		log(resp,(first.getChildren().size()==1),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==0),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,(third.getParents().size()==1),"Child has parents:"+third.getId()+":"+third.getParents().size());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==0),"First child has no parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,(third.getParents().size()==1),"Second child has one parent",":"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"Child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 
 		first.addChild(second);
-		log(resp,(first.getChildren().size()==2),"Node has children:"+first.getId()+":"+first.getChildren().size());
-		log(resp,(first.getParents().size()==0),"Node has parents:"+first.getId()+":"+first.getParents().size());
-		log(resp,(second.getParents().size()==1),"Child has parents:"+second.getId()+":"+second.getParents().size());
-		log(resp,(third.getParents().size()==1),"Child has parents:"+third.getId()+":"+third.getParents().size());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
-		log(resp,true,"Child found: "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
+		log(resp,(first.getChildren().size()==2),"Parent has two children",":"+first.getId()+":"+first.getChildren().size());
+		log(resp,(first.getParents().size()==0),"Parent has no parents",":"+first.getId()+":"+first.getParents().size());
+		log(resp,(second.getParents().size()==1),"First child has one parent",":"+second.getId()+":"+second.getParents().size());
+		log(resp,(third.getParents().size()==1),"Second child has one parent",":"+third.getId()+":"+third.getParents().size());
+		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
+		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 		
 		int nofNodes = 10000;
 		String sNofNodes = req.getParameter("nofNodes");
@@ -149,7 +158,7 @@ public class MemoServlet extends HttpServlet {
 			}
 		}
 		Date start = new Date();
-		log(resp,true,"Start to generate nodes:"+start.toString());
+		log(resp,true,"Performance test: Depth");
 		
 		MemoNode node = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
@@ -192,7 +201,7 @@ public class MemoServlet extends HttpServlet {
 			}
 		}
 		start = new Date();
-		log(resp,true,"Start to generate nodes:"+start.toString());
+		log(resp,true,"Performance test: Breadth");
 		
 		MemoNode startNode = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
@@ -218,7 +227,7 @@ public class MemoServlet extends HttpServlet {
 		
 		start = new Date();
 
-		log(resp,true,"Starting to generate test set"+start.toString());
+		log(resp,true,"Starting to generate test set:");
 
 		/*                                        _
 		 *      start                            \ /
@@ -318,8 +327,10 @@ public class MemoServlet extends HttpServlet {
 		HashMap<String,String> arguments = new HashMap<String,String>(2);
 		arguments.put("Number","Eight");
 		ArrayList<MemoNode> result = startNode.search(algorithm, -1,arguments);
-		for (MemoNode res : result) {
-			log(resp,true,"Found 1: " + res.getStringValue() +"/"+ res.getId());
+		if (debug){
+			for (MemoNode res : result) {
+				log(resp,true,"Found 1: " + res.getStringValue() +"/"+ res.getId());
+			}
 		}
 		time = new Date();
 		log(resp,result.size()==2,"Search 1 done in " + (time.getTime() - start.getTime())
@@ -328,8 +339,10 @@ public class MemoServlet extends HttpServlet {
 
 		arguments.put("Number","Seven");
 		result = startNode.search(algorithm, 2,arguments); // topx = 2
-		for (MemoNode res : result) {
-			log(resp,true,"Found 2: " + res.getStringValue() +"/"+ res.getId());
+		if (debug){
+			for (MemoNode res : result) {
+				log(resp,true,"Found 2: " + res.getStringValue() +"/"+ res.getId());
+			}
 		}
 		time = new Date();
 		log(resp,result.size()==1,"Search 2 done in " + (time.getTime() - start.getTime())
