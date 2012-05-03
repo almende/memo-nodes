@@ -324,7 +324,7 @@ public class MemoServlet extends HttpServlet {
 
 		time = new Date();
 		log(resp,true,"Pattern stored in " + (time.getTime() - start.getTime())
-								+ " ms");
+								+ " ms  ->"+preAmble.getId()+" : "+pattern.getId());
 		start = time;
 
 		HashMap<String,String> arguments = new HashMap<String,String>(2);

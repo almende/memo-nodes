@@ -26,8 +26,10 @@ public class MemoNode implements Comparable<MemoNode> {
 		MemoReadBus readBus = MemoReadBus.getBus();
 		MemoNode result = readBus.find(ROOT);
 		if (result == null) {
+			System.out.println("Creating new Root node!");
 			result = new MemoNode(ROOT, "root");
 		}
+//		System.out.println("Returning root node:"+result.getId());
 		return result;
 	}
 	
@@ -79,6 +81,7 @@ public class MemoNode implements Comparable<MemoNode> {
 			this.uuid=value.getId();
 			this.value=value;
 		} else {
+			System.out.println("Null value given, generating new UUID!");
 			this.uuid=new UUID();
 			this.value=null;
 		}
@@ -246,6 +249,7 @@ public class MemoNode implements Comparable<MemoNode> {
 			MemoNode property = new MemoNode(propName.getBytes());
 			property.addChild(value.getId());
 			this.addChild(property.getId());
+			break;
 		case 1:
 			ArrayList<MemoNode> values = properties.get(0).getChildren();
 			if (values.size() == 1) {
@@ -278,7 +282,7 @@ public class MemoNode implements Comparable<MemoNode> {
 						     ArrayList<MemoNode> patterns, int topX, HashMap<String,String> arguments){
 		
 		MemoNode step = query.node;
-		//System.out.println("checking node:" + toCompare.getValue() + "/" + query.value + "("+preamble+")");
+		//System.out.println("checking node:" + toCompare.getStringValue() + "/" + query.value + "("+preamble+")");
 
 		if (!query.match(toCompare)) return new StepState(false,"Node doesn't match.",query,toCompare);
 		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
@@ -333,7 +337,11 @@ public class MemoNode implements Comparable<MemoNode> {
 		HashSet<MemoNode> seenNodes = new HashSet<MemoNode>(200);
 		
 		if (patterns.size() <= 0) {
-			System.out.println("Warning, empty algorithm used.");
+			System.out.println("Warning, empty algorithm used (no patterns).");
+			return result;
+		}
+		if (preambles.size() <= 0) {
+			System.out.println("Warning, empty algorithm used (no preambles).");
 			return result;
 		}
 		
@@ -359,7 +367,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		patterns.add(pattern);
 		return this.search(preambles, patterns, topx, arguments);
 	}
-
+	//TODO: prevent loops
 	public String toJSONString(int depth){
 		JSONTuple tuple = this.toJSON(depth);
 		JSONObject result = new JSONObject().

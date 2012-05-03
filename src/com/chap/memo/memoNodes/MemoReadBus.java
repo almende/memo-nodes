@@ -102,10 +102,18 @@ public class MemoReadBus {
 	}
 	
 	public MemoNode find(UUID uuid){
-		return new MemoNode(getValue(uuid));
+		NodeValue value = getValue(uuid);
+		if (value != null){
+			return new MemoNode(value);
+		} 
+		return null;
 	}
 	public MemoNode find(UUID uuid,long timestamp){
-		return new MemoNode(getValue(uuid,timestamp));
+		NodeValue value = getValue(uuid,timestamp);
+		if (value != null){
+			return new MemoNode(value);
+		} 
+		return null;
 	}
 	public ArrayList<MemoNode> findAll(UUID uuid){
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(100);
