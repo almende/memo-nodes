@@ -58,4 +58,8 @@ public class ArcOp implements Serializable,Comparable<ArcOp> {
 	public int compareTo(ArcOp o) {
 		return (int) ((this.timestamp - o.timestamp)%1);
 	}
+	@Override
+	public String toString(){
+		return "["+this.type+"] "+this.arc[0]+":"+this.arc[1]+" @"+this.timestamp;
+	}
 }

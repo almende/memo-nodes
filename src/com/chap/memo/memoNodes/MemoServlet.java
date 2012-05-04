@@ -46,6 +46,7 @@ public class MemoServlet extends HttpServlet {
 			debug=true;
 		}
 		if (debug) System.out.println("Outputting debug info:"+debugStr);
+
 		log(resp,true,"\nStarting single node tests:");
 		//Add single node
 		String title="First node";
@@ -151,6 +152,29 @@ public class MemoServlet extends HttpServlet {
 		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 		
+		log(resp,true,"\nTesting Properties:");
+		first.setPropertyValue("test", "hello");
+		log(resp,test(first.getPropertyValue("test"),"hello"),"Property write/read cycle",":"+first.getPropertyValue("test"));
+		first.setPropertyValue("test", "hello2");
+		log(resp,test(first.getPropertyValue("test"),"hello2"),"Property new value write/read cycle",":"+first.getPropertyValue("test"));
+		log(resp,first.getChildrenByStringValue("test", -1).size() == 1,"Node has only one property",":"+first.getChildrenByStringValue("test", -1).size());
+
+		MemoNode newPropNode = new MemoNode("Test");
+		newPropNode.setPropertyValue("test", "hello");
+		log(resp,test(newPropNode.getPropertyValue("test"),"hello"),"Property write/read cycle",":"+newPropNode.getPropertyValue("test"));
+		newPropNode.setPropertyValue("test", "hello2");
+		log(resp,test(newPropNode.getPropertyValue("test"),"hello2"),"Property new value write/read cycle",":"+newPropNode.getPropertyValue("test"));
+		log(resp,newPropNode.getChildrenByStringValue("test", -1).size() == 1,"Node has only one property",":"+newPropNode.getChildrenByStringValue("test", -1).size());
+
+		newPropNode = new MemoNode("Test2");
+		newPropNode.setPropertyValue("test", "hello");
+		log(resp,test(newPropNode.getPropertyValue("test"),"hello"),"Property write/read cycle",":"+newPropNode.getPropertyValue("test"));
+		newPropNode.setPropertyValue("test2", "hello");
+		log(resp,test(newPropNode.getPropertyValue("test2"),"hello"),"Property write/read cycle",":"+newPropNode.getPropertyValue("test"));		
+		newPropNode.setPropertyValue("test", "hello2");
+		log(resp,test(newPropNode.getPropertyValue("test"),"hello2"),"Property new value write/read cycle",":"+newPropNode.getPropertyValue("test"));
+		log(resp,newPropNode.getChildren().size() == 2,"Node has two properties",":"+newPropNode.getChildren().size());
+	
 		int nofNodes = 10000;
 		String sNofNodes = req.getParameter("nofNodes");
 		if (sNofNodes != null){
@@ -352,5 +376,6 @@ public class MemoServlet extends HttpServlet {
 						+ " ms");
 
 		log(resp,true,"\nAll tests done!");
-	}	
+	
+	}
 }

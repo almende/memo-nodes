@@ -254,8 +254,9 @@ public class MemoNode implements Comparable<MemoNode> {
 			ArrayList<MemoNode> values = properties.get(0).getChildren();
 			if (values.size() == 1) {
 				values.get(0).update(propValue.getBytes());
+				break;
 			}
-			// explicit no-break
+			//explicit no-break
 		default:
 			System.out
 					.println("Error, incorrect properties found, skipping setPropertyValue("

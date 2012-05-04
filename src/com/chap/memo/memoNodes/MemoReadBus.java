@@ -177,50 +177,51 @@ public class MemoReadBus {
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);	
 		
-		if (ArcOpIndexes.size() <=0) return result;
-		ArcOpIndex index = ArcOpIndexes.first();
-		while (index != null){
-			switch (type){
-			case 0: //parentList, UUID is child
-				if (index.children.contains(uuid)){
-					ArcOpShard shard=null;
-					synchronized(NodeValueShards){
-						if (ArcOpShards.containsKey(index.shardKey)){
-							shard = ArcOpShards.get(index.shardKey);
+		if (ArcOpIndexes.size() >0){
+			ArcOpIndex index = ArcOpIndexes.first();
+			while (index != null){
+				switch (type){
+				case 0: //parentList, UUID is child
+					if (index.children.contains(uuid)){
+						ArcOpShard shard=null;
+						synchronized(NodeValueShards){
+							if (ArcOpShards.containsKey(index.shardKey)){
+								shard = ArcOpShards.get(index.shardKey);
+							}
 						}
-					}
-					if (shard==null) {
-						shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
-					}
-					ArcOpShards.put(shard.myKey,shard);
-					for (ArcOp op : shard.getChildOps(uuid)){
-						if (op.getTimestamp_long()<= timestamp){
-							result.add(op);
+						if (shard==null) {
+							shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
 						}
-					}	
+						ArcOpShards.put(shard.myKey,shard);
+						for (ArcOp op : shard.getChildOps(uuid)){
+							if (op.getTimestamp_long()<= timestamp){
+								result.add(op);
+							}
+						}	
+					}
+					break;
+				case 1: //parentList, UUID is child
+					if (index.parents.contains(uuid)){
+						ArcOpShard shard=null;
+						synchronized(NodeValueShards){
+							if (ArcOpShards.containsKey(index.shardKey)){
+								shard = ArcOpShards.get(index.shardKey);
+							}
+						}
+						if (shard==null) {
+							shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
+						}
+						ArcOpShards.put(shard.myKey,shard);
+						for (ArcOp op : shard.getParentOps(uuid)){
+							if (op.getTimestamp_long()<= timestamp){
+								result.add(op);
+							}
+						}	
+					}
+					break;
 				}
-				break;
-			case 1: //parentList, UUID is child
-				if (index.parents.contains(uuid)){
-					ArcOpShard shard=null;
-					synchronized(NodeValueShards){
-						if (ArcOpShards.containsKey(index.shardKey)){
-							shard = ArcOpShards.get(index.shardKey);
-						}
-					}
-					if (shard==null) {
-						shard = (ArcOpShard) MemoStorable.load(index.shardKey); 
-					}
-					ArcOpShards.put(shard.myKey,shard);
-					for (ArcOp op : shard.getParentOps(uuid)){
-						if (op.getTimestamp_long()<= timestamp){
-							result.add(op);
-						}
-					}	
-				}
-				break;
+				index = ArcOpIndexes.higher(index);
 			}
-			index = ArcOpIndexes.higher(index);
 		}
 		switch (type){
 		case 0: //parentList, UUID is child
