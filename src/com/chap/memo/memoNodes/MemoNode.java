@@ -152,7 +152,9 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 	public String getStringValue(){
 		byte[] res = getValue();
-		if (res != null) return new String(getValue());
+		if (res != null) {
+			return new String(res,0,Math.min(250, res.length));
+		}
 		return "";
 	}
 	public byte[] valueAt(long timestamp){
@@ -242,6 +244,9 @@ public class MemoNode implements Comparable<MemoNode> {
 		return "";
 	}
 	public void setPropertyValue(String propName, String propValue){
+		if (propName == null) return;
+		if (propValue == null) propValue="";
+		
 		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
 		switch (properties.size()) {
 		case 0:

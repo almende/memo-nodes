@@ -53,16 +53,20 @@ public class MemoWriteBus {
 	
 	public void flushValues(){
 		synchronized(values.nodes){
-			NodeValueIndex index = new NodeValueIndex(values);
-			MemoReadBus.getBus().addValueIndex(index,values);
-			values= new NodeValueShard();
+			if (values.nodes.size()>0){
+				NodeValueIndex index = new NodeValueIndex(values);
+				MemoReadBus.getBus().addValueIndex(index,values);
+				values= new NodeValueShard();
+			}
 		}
 	}
 	public void flushOps(){
 		synchronized(ops){
-			ArcOpIndex index = new ArcOpIndex(ops);
-			MemoReadBus.getBus().addOpsIndex(index,ops);
-			ops= new ArcOpShard();
+			if (ops.currentSize>0){
+				ArcOpIndex index = new ArcOpIndex(ops);
+				MemoReadBus.getBus().addOpsIndex(index,ops);
+				ops= new ArcOpShard();
+			}
 		}
 	}
 	
