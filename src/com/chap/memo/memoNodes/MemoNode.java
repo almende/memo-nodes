@@ -43,7 +43,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	public int hashCode(){
 		return this.getId().hashCode();
 	}
-	
+
 	@Override
 	public boolean equals(Object o){
 		if (o instanceof MemoNode) {
@@ -113,6 +113,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		this.children=new ArcList(this.uuid,1);
 	}
 	public void update(byte[] value){
+		if (value == null) value =  new byte[0];
 		this.value=writeBus.store(this.getId(), value);
 	}
 	public void update(String value){
@@ -142,7 +143,19 @@ public class MemoNode implements Comparable<MemoNode> {
 	public void delChild(MemoNode child){
 		delChild(child.getId());			
 	}
-
+	public void delete(boolean recursive){
+		this.update((byte[])null);
+		this.parents.clear();
+		if (!recursive) {
+			this.children.clear();
+			return;
+		}
+		ArrayList<MemoNode> children = this.getChildren();
+		this.children.clear();
+		for (MemoNode child : children){
+			child.delete(true);
+		}
+	}
 	public byte[] getValue(){
 		if (this.value == null || readBus.valueChanged(lastUpdate)){
 			this.value=readBus.getValue(this.uuid);

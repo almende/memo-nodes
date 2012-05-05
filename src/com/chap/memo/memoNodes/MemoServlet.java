@@ -84,6 +84,11 @@ public class MemoServlet extends HttpServlet {
 		first = MemoReadBus.getBus().find(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
 		
+		log(resp, true, "\nStoring a null value into node:");
+		first.update((byte[])null);
+		log(resp,test(first.getStringValue(),""),"Reading string leads to empty string",": "+first.getId()+"/"+first.getStringValue());
+		log(resp,first.getValue().length==0,"Reading value leads to zero length byte array",": "+first.getId()+"/"+first.getValue());
+
 		log(resp,true,"\nMulti nodal tests: (Adding one child)");
 		
 		title = "First node";
@@ -174,7 +179,15 @@ public class MemoServlet extends HttpServlet {
 		newPropNode.setPropertyValue("test", "hello2");
 		log(resp,test(newPropNode.getPropertyValue("test"),"hello2"),"Property new value write/read cycle",":"+newPropNode.getPropertyValue("test"));
 		log(resp,newPropNode.getChildren().size() == 2,"Node has two properties",":"+newPropNode.getChildren().size());
-	
+
+		log(resp,true,"\nTrying to recursively delete nodes:");
+		
+		first.delete(true);
+		log(resp,first.getChildren().size()==0,"First has no children",":"+first.getChildren().size());
+		log(resp,second.getChildren().size()==0,"Second has no children",":"+first.getChildren().size());
+		log(resp,third.getChildren().size()==0,"Third has no children",":"+first.getChildren().size());
+		log(resp,third.getParents().size()==0,"Third has no parents",":"+first.getParents().size());
+		
 		int nofNodes = 10000;
 		String sNofNodes = req.getParameter("nofNodes");
 		if (sNofNodes != null){
@@ -195,12 +208,10 @@ public class MemoServlet extends HttpServlet {
 		}
 		Date time = new Date();
 		log(resp,true,"Storing done in: "+(time.getTime() - start.getTime())+" ms");
+		MemoNode startNode = node;
 
 		int count = 0;
-		// node = Node.find("start");
 		while (node != null) {
-			//String value = node.getStringValue();
-			//System.out.println(value+ ":" + node.getChildren().size());
 			ArrayList<MemoNode> children = node.getChildren();
 			if (children.isEmpty()) {
 				System.out.println(node.getId() +":"+ node.getStringValue() + " has no children!");
@@ -215,6 +226,13 @@ public class MemoServlet extends HttpServlet {
 		log(resp,(count==nofNodes),
 				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
+
+		time = new Date();
+		startNode.delete(true);
+		log(resp,true,
+				" Nodes deleted again in:"
+						+ (new Date().getTime() - time.getTime()) + " ms");
+		
 		
 		MemoWriteBus.getBus().flush();
 
@@ -230,7 +248,7 @@ public class MemoServlet extends HttpServlet {
 		start = new Date();
 		log(resp,true,"\nPerformance test: Breadth");
 		
-		MemoNode startNode = new MemoNode("start");
+		startNode = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
 			MemoNode newNode = new MemoNode(new Integer(i).toString());
 			startNode.addChild(newNode);
@@ -250,6 +268,13 @@ public class MemoServlet extends HttpServlet {
 				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 
+		time = new Date();
+		startNode.delete(true);
+		log(resp,true,
+				" Nodes deleted again in:"
+						+ (new Date().getTime() - time.getTime()) + " ms");
+		
+		
 		MemoWriteBus.getBus().flush();
 		
 		start = new Date();

@@ -22,8 +22,6 @@ public class ArcList {
 		this.type=type;
 		this.nodeId=nodeId;
 	}
-	//TODO: get ArcList @timestamp, don't update!
-	
 	public long getTimestamp_long(){
 		return this.timestamp;
 	}
@@ -83,6 +81,12 @@ public class ArcList {
 		ArcOp op=new ArcOp(Ops.DELETE,arc, new Date());
 		writeBus.store(op);
 		arcops.add(op);
+	}
+
+	public void clear(){
+		for (UUID other: this.nodes){
+			this.delNode(other);
+		}
 	}
 	private void ops2nodes(){
 		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
