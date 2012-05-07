@@ -11,28 +11,28 @@ public class NodeValue implements Serializable {
 	private final byte[] value;
 	private final long timestamp;
 	
-	protected NodeValue(UUID id, byte[] value, long timestamp){
+	 NodeValue(UUID id, byte[] value, long timestamp){
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp;
 	}
-	protected NodeValue(UUID id, byte[] value, Date timestamp){
+	 NodeValue(UUID id, byte[] value, Date timestamp){
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp.getTime();
 	}
-	protected UUID getId() {
+	 UUID getId() {
 		return id;
 	}
 
-	protected byte[] getValue() {
+	 byte[] getValue() {
 		return value;
 	}
 
-	protected Date getTimestamp() {
+	 Date getTimestamp() {
 		return new Date(timestamp);
 	}
-	protected long getTimestamp_long(){
+	 long getTimestamp_long(){
 		return timestamp;
 	}
 	

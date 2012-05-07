@@ -36,10 +36,10 @@ public class MemoReadBus {
 	
 	private final static MemoReadBus bus = new MemoReadBus();
 	
-	protected void updateIndexes(){
+	 void updateIndexes(){
 		loadIndexes(false,lastIndexesRun-10000);
 	}
-	protected void loadIndexes(boolean clear, long sinceTimestamp){
+	 void loadIndexes(boolean clear, long sinceTimestamp){
 		if (datastore == null) datastore = DatastoreServiceFactory.getDatastoreService();
 		if (clear) {
 			NodeValueIndexes.clear();
@@ -76,46 +76,46 @@ public class MemoReadBus {
 		}
 	}
 	
-	protected void addValueIndex(NodeValueIndex index,NodeValueShard shard){
+	 void addValueIndex(NodeValueIndex index,NodeValueShard shard){
 		NodeValueShards.put(index.shardKey, shard);
 		NodeValueIndexes.add(index);
 		lastValueChange= new Date().getTime();
 	}
-	protected void addOpsIndex(ArcOpIndex index,ArcOpShard shard){
+	 void addOpsIndex(ArcOpIndex index,ArcOpShard shard){
 		ArcOpShards.put(index.shardKey, shard);
 		ArcOpIndexes.add(index);
 		lastOpsChange= new Date().getTime();
 	}
-	protected MemoReadBus(){
+	 MemoReadBus(){
 		loadIndexes(false,0);
 	};
 	
-	protected static MemoReadBus getBus(){
+	 static MemoReadBus getBus(){
 		return bus;
 	}
 	
-	protected boolean valueChanged(long timestamp){
+	 boolean valueChanged(long timestamp){
 		return timestamp<=lastValueChange;
 	}
-	protected boolean opsChanged(long timestamp){
+	 boolean opsChanged(long timestamp){
 		return timestamp<=lastOpsChange;
 	}
 	
-	protected MemoNode find(UUID uuid){
+	 MemoNode find(UUID uuid){
 		NodeValue value = getValue(uuid);
 		if (value != null){
 			return new MemoNode(value);
 		} 
 		return null;
 	}
-	protected MemoNode find(UUID uuid,long timestamp){
+	 MemoNode find(UUID uuid,long timestamp){
 		NodeValue value = getValue(uuid,timestamp);
 		if (value != null){
 			return new MemoNode(value);
 		} 
 		return null;
 	}
-	protected ArrayList<MemoNode> findAll(UUID uuid){
+	 ArrayList<MemoNode> findAll(UUID uuid){
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(100);
 		if (NodeValueIndexes.size() <=0) return result;
 		NodeValueIndex index = NodeValueIndexes.last();
@@ -139,10 +139,10 @@ public class MemoReadBus {
 		Collections.sort(result);
 		return result;
 	}
-	protected NodeValue getValue(UUID uuid){
+	 NodeValue getValue(UUID uuid){
 		return getValue(uuid,new Date().getTime());
 	}
-	protected NodeValue getValue(UUID uuid,long timestamp){
+	 NodeValue getValue(UUID uuid,long timestamp){
 		NodeValue result = null;
 
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
@@ -171,10 +171,10 @@ public class MemoReadBus {
 		}		
 		return result;
 	}
-	protected ArrayList<ArcOp> getOps(UUID uuid,int type){
+	 ArrayList<ArcOp> getOps(UUID uuid,int type){
 		return getOps(uuid,type,new Date().getTime());
 	}
-	protected ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
+	 ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp){
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);	
 		
 		if (ArcOpIndexes.size() >0){

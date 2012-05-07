@@ -21,11 +21,11 @@ public class MemoWriteBus {
 		ops = new ArcOpShard();
 	};
 	
-	protected static MemoWriteBus getBus(){
+	 static MemoWriteBus getBus(){
 		return bus;
 	}
 
-	static protected void emptyDB() {
+	static  void emptyDB() {
 		// create one big cleanup query
 		String[] types = { "NodeValueIndex","ArcOpIndex","NodeValueShard","ArcOpShard" };
 		for (String type : types) {
@@ -45,13 +45,13 @@ public class MemoWriteBus {
 		System.out.println("Database cleared!");
 	}
 	
-	protected void flush(){
+	 void flush(){
 		flushValues();
 		flushOps();
 		MemoReadBus.getBus().updateIndexes();
 	}
 	
-	protected void flushValues(){
+	 void flushValues(){
 		synchronized(values.nodes){
 			if (values.nodes.size()>0){
 				NodeValueIndex index = new NodeValueIndex(values);
@@ -60,7 +60,7 @@ public class MemoWriteBus {
 			}
 		}
 	}
-	protected void flushOps(){
+	 void flushOps(){
 		synchronized(ops){
 			if (ops.currentSize>0){
 				ArcOpIndex index = new ArcOpIndex(ops);
@@ -70,7 +70,7 @@ public class MemoWriteBus {
 		}
 	}
 	
-	protected NodeValue store(UUID id, byte[] value){
+	 NodeValue store(UUID id, byte[] value){
 		long now = new Date().getTime();
 		NodeValue result = new NodeValue(id, value, now);
 		values.store(result);
@@ -80,7 +80,7 @@ public class MemoWriteBus {
 		}
 		return result;
 	}
-	protected void store(ArcOp op){
+	 void store(ArcOp op){
 		ops.store(op);
 		MemoReadBus.getBus().lastOpsChange=new Date().getTime();
 		if (ops.currentSize >= ArcOpShard.SHARDSIZE){

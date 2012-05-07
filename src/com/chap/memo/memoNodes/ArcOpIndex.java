@@ -12,17 +12,17 @@ public final class ArcOpIndex extends MemoStorable {
 	Set<UUID> children;
 	Key shardKey;
 	
-	protected ArcOpIndex(){}
-	protected ArcOpIndex(ArcOpShard ops){
+	 ArcOpIndex(){}
+	 ArcOpIndex(ArcOpShard ops){
 		parents = new HashSet<UUID>(ops.parents.keySet());
 		children = new HashSet<UUID>(ops.children.keySet());
 		shardKey = ops.store("ArcOpShard");
 		this.store("ArcOpIndex");
 	}
-	protected static ArcOpIndex load(Key key){
+	 static ArcOpIndex load(Key key){
 		return (ArcOpIndex) MemoStorable.load(key);
 	}
-	protected ArcOpShard loadShard(){
+	 ArcOpShard loadShard(){
 		return (ArcOpShard) MemoStorable.load(shardKey);
 	}
 }

@@ -72,8 +72,6 @@ final public class JsonExport extends HttpServlet {
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
-		
-		MemoReadBus bus = MemoReadBus.getBus();
 		int maxdepth = 10;
 		String depth = req.getParameter("maxdepth");
 		if (depth != null){
@@ -87,8 +85,7 @@ final public class JsonExport extends HttpServlet {
 			makeCORS(req,resp);
 			
 			if (NodeId != null){
-				MemoNode node = bus.find(new UUID(NodeId));
-				System.out.println("node found:"+node.getId());
+				MemoNode node = new MemoNode(new UUID(NodeId));
 				resp.setContentType("application/json");
 				resp.getWriter().println(
 						node.toJSONString(maxdepth)

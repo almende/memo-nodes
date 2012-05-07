@@ -1,5 +1,5 @@
 package com.chap.memo.memoNodes;
 
-public enum Ops {
+enum Ops {
     ADD,DELETE 
 }

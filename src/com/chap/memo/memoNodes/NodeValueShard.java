@@ -14,7 +14,7 @@ public final class NodeValueShard extends MemoStorable{
 	
 	final HashMap<UUID,ArrayList<NodeValue>> nodes = new HashMap<UUID,ArrayList<NodeValue>>(SHARDSIZE);
 		
-	protected void store(NodeValue nodeVal) {
+	 void store(NodeValue nodeVal) {
 		ArrayList<NodeValue> cur = nodes.get(nodeVal.getId());
 		if (cur != null) {
 			int size = cur.size();
@@ -39,17 +39,17 @@ public final class NodeValueShard extends MemoStorable{
 		if (newest == 0 || nodeVal.getTimestamp_long()>newest) newest = nodeVal.getTimestamp_long();
 		if (oldest == 0 || nodeVal.getTimestamp_long()<oldest) oldest = nodeVal.getTimestamp_long();
 	}
-	protected ArrayList<NodeValue> findAll(UUID id) {
+	 ArrayList<NodeValue> findAll(UUID id) {
 		return nodes.get(id);
 	}
-	protected NodeValue find(UUID id) {
+	 NodeValue find(UUID id) {
 		return findBefore(id,new Date());
 	}
-	protected NodeValue findBefore(UUID id, Date timestamp) {
+	 NodeValue findBefore(UUID id, Date timestamp) {
 		return findBefore(id,timestamp.getTime());
 	}	
 	
-	protected NodeValue findBefore(UUID id, long timestamp_long){
+	 NodeValue findBefore(UUID id, long timestamp_long){
 		if (timestamp_long < oldest) return null; //shortcut, will probably not be used...
 		
 		ArrayList<NodeValue> res = nodes.get(id);
