@@ -11,33 +11,56 @@ import java.util.regex.Pattern;
 import net.sf.json.JSONObject;
 import com.eaio.uuid.UUID;
 
+/**
+ * MemoNode is a graph database, designed to run effectively on the Google App Engine datastore. 
+ * It features arbitrary length byte values, full history and a self-referencing pattern-matching
+ * search facility. 
+ * 
+ * Copyright: Ludo Stellingwerff, Almende B.V.
+ * License:   Apache License Version 2.0
+ * @see <a href="chap.almende.com">Part of CHAP</a>
+ * 
+ * @author Ludo Stellingwerff
+ * @author Almende B.V.
+ * @version 1.0
+ * 
+ */
 public class MemoNode implements Comparable<MemoNode> {
-	public static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
+	private static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
 	
-	MemoReadBus readBus = MemoReadBus.getBus();
-	MemoWriteBus writeBus = MemoWriteBus.getBus();
-	long lastUpdate= new Date().getTime();
+	private MemoReadBus readBus = MemoReadBus.getBus();
+	private MemoWriteBus writeBus = MemoWriteBus.getBus();
+	private long lastUpdate= new Date().getTime();
 	
 	private UUID uuid;
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
 	
+	/**
+	 * Makes sure all graph changes are written to the datastore. It is advisable to run this
+	 * at least at the end of each Servlet call.
+	 */
 	public static void flushDB(){
 		MemoWriteBus.getBus().flush();
 	}
+	/**
+	 * Dangerous! Empties the entire graph database, irreversible! You will loose data...
+	 */
 	public static void emptyDB(){
 		MemoWriteBus.emptyDB();
 	}
-	
+	/**
+	 * A node that can serve as a tree root, providing at least one anchor for the database.
+	 * Use sparsely as this node will otherwise get a lot of children, better to use one or more 
+	 * intermediate nodes.
+	 */
 	public static MemoNode getRootNode() {
 		MemoReadBus readBus = MemoReadBus.getBus();
 		MemoNode result = readBus.find(ROOT);
 		if (result == null) {
-			System.out.println("Creating new Root node!");
 			result = new MemoNode(ROOT, "root");
 		}
-//		System.out.println("Returning root node:"+result.getId());
 		return result;
 	}
 	
@@ -60,31 +83,63 @@ public class MemoNode implements Comparable<MemoNode> {
 			return false;
 		}
 	}
-
+	/**
+	 * Find or create node with specified UUID. This is the recommended way to obtain 
+	 * existing nodes of which you know the UUID. If node can't be found, this node will have an
+	 * empty value;
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
 	public MemoNode(UUID uuid){
 		this.uuid=uuid;
 		this.parents=new ArcList(uuid,0);
 		this.children=new ArcList(uuid,1);		
 	}
-	public MemoNode(NodeValue value, ArcList parents, ArcList children){
-		this.uuid = value.getId();
-		this.value=value;
-		this.parents=parents;
-		this.children=children;
+	/**
+	 * Create new node with specified value.
+	 * 
+	 */
+	public MemoNode(byte[] value){
+		this.uuid=new UUID();
+		this.value=writeBus.store(this.uuid, value);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
-	public MemoNode(UUID id, byte[] value, UUID[] children, UUID[] parents){
-		this.uuid=id;
-		this.value=writeBus.store(id, value);
-		this.parents=new ArcList(id,0);
-		this.children=new ArcList(id,1);
-		for (UUID child: children){
-			this.addChild(child);
-		}
-		for (UUID parent: parents){
-			this.addParent(parent);
-		}
+	/**
+	 * Create new node with specified string value.
+	 * 
+	 */	
+	public MemoNode(String value){
+		this.uuid=new UUID();
+		this.value=writeBus.store(this.uuid, value.getBytes());
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
 	}
-	public MemoNode(NodeValue value){
+	/**
+	 * Find or create node with specified UUID and value. If node existed it will be updated to the
+	 * provided value.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
+	public MemoNode(UUID uuid,byte[] value){
+		this.uuid=uuid;
+		this.value=writeBus.store(uuid, value);
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
+	}
+	/**
+	 * Find or create node with specified UUID and value. If node existed it will be updated to the
+	 * provided string value.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */	
+	public MemoNode(UUID uuid,String value){
+		this.uuid=uuid;
+		this.value=writeBus.store(uuid, value.getBytes());		
+		this.parents=new ArcList(this.uuid,0);
+		this.children=new ArcList(this.uuid,1);
+	}
+	protected MemoNode(NodeValue value){
 		if (value!=null){
 			this.uuid=value.getId();
 			this.value=value;
@@ -96,62 +151,232 @@ public class MemoNode implements Comparable<MemoNode> {
 		this.parents=new ArcList(this.uuid,0);
 		this.children=new ArcList(this.uuid,1);
 	}
-	public MemoNode(byte[] value){
-		this.uuid=new UUID();
-		this.value=writeBus.store(this.uuid, value);
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
-	}
-	public MemoNode(String value){
-		this.uuid=new UUID();
-		this.value=writeBus.store(this.uuid, value.getBytes());
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
-	}
-	public MemoNode(UUID uuid,byte[] value){
-		this.uuid=uuid;
-		this.value=writeBus.store(uuid, value);
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
-	}
-	public MemoNode(UUID uuid,String value){
-		this.uuid=uuid;
-		this.value=writeBus.store(uuid, value.getBytes());		
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
-	}
+	/**
+	 * Update node's value to specified value.
+	 * 
+	 */
 	public void update(byte[] value){
 		if (value == null) value =  new byte[0];
 		this.value=writeBus.store(this.getId(), value);
 	}
+	/**
+	 * Update node's value to specified string value.
+	 * 
+	 */
 	public void update(String value){
 		this.value=writeBus.store(this.getId(), value.getBytes());
 	}
+	/**
+	 * Add a new parent arc between a node with specified parent UUID and this node, effectively
+	 * making this node a child of the provided node.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
 	public void addParent(UUID parent){
 		parents.addNode(parent);
 	}
+	/**
+	 * Add a new child arc between a node with specified child UUID and this node, effectively making
+	 * the provided node a child of this node.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
 	public void addChild(UUID child){
 		children.addNode(child);
 	}
+	/**
+	 * Remove the parent arc between the node with specified parent UUID and this node, effectively
+	 * making this node no longer a child of the provided node.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
 	public void delParent(UUID parent){
 		parents.delNode(parent);
 	}
+	/**
+	 * Remove the child arc between this node and the node with the provided child UUID, effectively making
+	 * this node no longer a parent of the provided node.
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
 	public void delChild(UUID child){
 		children.delNode(child);
 	}
+	/**
+	 * Add a new parent arc between the specified parent node and this node, effectively
+	 * making this node a child of the provided node.
+	 * 
+	 */
 	public void addParent(MemoNode parent){
 		addParent(parent.getId());
 	}
+	/**
+	 * Add a new child arc between the specified child node and this node, effectively making
+	 * the provided node a child of this node.
+	 * 
+	 */
 	public void addChild(MemoNode child){
 		addChild(child.getId());		
 	}
+	/**
+	 * Remove the parent arc between the specified parent node and this node, effectively
+	 * making this node no longer a child of the provided node.
+	 * 
+	 */
 	public void delParent(MemoNode parent){
 		delParent(parent.getId());
 	}
+	/**
+	 * Remove the child arc between this node and the provided child node, effectively making
+	 * this node no longer a parent of the provided node.
+	 * 
+	 */
 	public void delChild(MemoNode child){
 		delChild(child.getId());			
 	}
-	
+	/**
+	 * Get current value of node. If node has been deleted, can't be found or has been 
+	 * updated to a null value, this call returns a zero-size byte[].
+	 * 
+	 * @return byte[], zero-size if node not found/empty/null
+	 */
+	public byte[] getValue(){
+		if (this.value == null || readBus.valueChanged(lastUpdate)){
+			this.value=readBus.getValue(this.uuid);
+			lastUpdate=new Date().getTime();
+		}
+		return this.value == null?null:this.value.getValue();
+	}
+	/**
+	 * Get current value of node as a string. The returned string is limited to 250 bytes, for
+	 * larger strings use "new String(getValue())" instead.
+	 * If node has been deleted, can't be found or has been updated to a null value,
+	 * this call returns an empty string.
+	 * 
+	 * @return String, limited to 250 bytes.
+	 */
+	public String getStringValue(){
+		byte[] res = getValue();
+		if (res != null) {
+			return new String(res,0,Math.min(250, res.length));
+		}
+		return "";
+	}
+	public byte[] valueAt(long timestamp){
+		NodeValue oldValue = readBus.getValue(getId(), timestamp);
+		return oldValue.getValue();
+	}
+	public ArrayList<MemoNode> history(){
+		ArrayList<MemoNode> result = readBus.findAll(getId());
+		if (!result.get(result.size()-1).equals(this)){
+			result.add(this);	
+		}
+		return result;
+	}
+	/**
+	 * Returns the UUID of this node. 
+	 * 
+	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
+	 */
+	public UUID getId(){
+		return this.uuid;
+	}
+	/**
+	 * Returns the timestamp of the latest update (or creation) to this node as the amount of microseconds since midnight 1 Jan 1970. 
+	 * 
+	 * @return long, amount of microseconds since 1-1-1970 00:00:00.00;
+	 */
+	public long getTimestamp(){
+		return Math.max(this.value.getTimestamp_long(),Math.max(this.children.getTimestamp_long(),this.parents.getTimestamp_long()));
+	}
+	/**
+	 * Returns the list of direct parent nodes. 
+	 * 
+	 * @return ArrayList<MemoNode> parents
+	 */
+	public ArrayList<MemoNode> getParents(){
+		return this.parents.getNodes();
+	}
+	/**
+	 * Returns the list of direct child nodes. 
+	 * 
+	 * @return ArrayList<MemoNode> children
+	 */
+	public ArrayList<MemoNode> getChildren(){
+		return this.children.getNodes();
+	}
+	/**
+	 * Returns all children whose string value equal the given string.
+	 * 
+	 * @param value the string value to compare with
+	 * @param topx return a maximum of topx children (Set to 0 for all matching children)
+	 * @return ArrayList<MemoNode> children
+	 */
+	public ArrayList<MemoNode> getChildrenByStringValue(String value, int topx){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
+				this.children.getLength());
+		for (MemoNode child : getChildren()) {
+			if (child.getStringValue().equals(value)) {
+				result.add(child);
+				if (topx > 0 && result.size() >= topx)
+					return result;
+			}
+		}
+		return result;
+	}
+	/**
+	 * Returns all children whose string value match the given regular expression.
+	 * 
+	 * @see  java.util.regex.Pattern
+	 * @param regex the regular expression to match against
+	 * @param topx return a maximum of topx children (Set to 0 for all matching children)
+	 * @return ArrayList<MemoNode> children
+	 */
+	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex, int topx){
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
+				this.children.getLength());
+		for (MemoNode child : getChildren()) {
+			if (regex.matcher(child.getStringValue()).matches()) {
+				result.add(child);
+				if (topx > 0 && result.size() >= topx)
+					return result;
+			}
+		}
+		return result;
+	}
+	/**
+	 * Returns all children whose integer value falls in the give range.
+	 * (Currently interprets the string value as an integer, will probably still change in the future?)
+	 * 
+	 * @param lower the lower bound of the range, value is included in the range.
+	 * @param upper the upper bound of the range, value is included in the range.
+	 * @param topx return a maximum of topx children (Set to 0 for all matching children)
+	 * @return ArrayList<MemoNode> children
+	 */
+	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx){
+		//TODO: store integers differently? Not as String...
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
+				this.children.getLength());
+		for (MemoNode child : getChildren()) {
+			try {
+				int value = Integer.parseInt(child.getStringValue());
+				if (value >= lower && value <= upper) {
+					result.add(child);
+					if (topx > 0 && result.size() >= topx)
+						return result;
+				}
+			} catch (NumberFormatException e) {
+			}
+		}
+		return result;
+	}
+	/**
+	 * Remove this node.(=setting its value to null and removing all arcs) This method can delete
+	 * entire subgraphs through setting the provided flag to true. Removing large subgraphs can be
+	 * an expensive operation.
+	 * 
+	 * @param recursive also remove all children recursively (entire subgraph!)
+	 */
 	public void delete(boolean recursive){
 		MemoNode current = this;
 		current.update((byte[])null);
@@ -176,106 +401,17 @@ public class MemoNode implements Comparable<MemoNode> {
 			}
 		}
 	}
-	public byte[] getValue(){
-		if (this.value == null || readBus.valueChanged(lastUpdate)){
-			this.value=readBus.getValue(this.uuid);
-			lastUpdate=new Date().getTime();
-		}
-		return this.value == null?null:this.value.getValue();
-	}
-	public String getStringValue(){
-		byte[] res = getValue();
-		if (res != null) {
-			return new String(res,0,Math.min(250, res.length));
-		}
-		return "";
-	}
-	public byte[] valueAt(long timestamp){
-		NodeValue oldValue = readBus.getValue(getId(), timestamp);
-		return oldValue.getValue();
-	}
-	public ArrayList<MemoNode> history(){
-		ArrayList<MemoNode> result = readBus.findAll(getId());
-		if (!result.get(result.size()-1).equals(this)){
-			result.add(this);	
-		}
-		return result;
-	}
-	public UUID getId(){
-		return this.uuid;
-	}
-	public long getTimestamp(){
-		return Math.max(this.value.getTimestamp_long(),Math.max(this.children.getTimestamp_long(),this.parents.getTimestamp_long()));
-	}
-	public long getValueTimestamp(){
-		return this.value.getTimestamp_long();
-	}
-	public long getParentTimestamp(){
-		return this.parents.getTimestamp_long();
-	}
-	public long getChildTimestamp(){
-		return this.children.getTimestamp_long();
-	}
-	public ArrayList<MemoNode> getChildren(){
-		return this.children.getNodes();
-	}
-
-	public ArrayList<MemoNode> getParents(){
-		return this.parents.getNodes();
-	}
-
-	public ArrayList<MemoNode> getChildrenByStringValue(String value, int topx){
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
-			if (child.getStringValue().equals(value)) {
-				result.add(child);
-				if (topx > 0 && result.size() >= topx)
-					return result;
-			}
-		}
-		return result;
-	}
-	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex, int topx){
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
-			if (regex.matcher(child.getStringValue()).matches()) {
-				result.add(child);
-				if (topx > 0 && result.size() >= topx)
-					return result;
-			}
-		}
-		return result;
-	}
-	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx){
-		//TODO: store integers differently? Not as String...
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
-			try {
-				int value = Integer.parseInt(child.getStringValue());
-				if (value >= lower && value <= upper) {
-					result.add(child);
-					if (topx > 0 && result.size() >= topx)
-						return result;
-				}
-			} catch (NumberFormatException e) {
-			}
-		}
-		return result;
-	}
-	public String getPropertyValue(String propName){
-		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
-		if (properties.size() == 1) {
-			ArrayList<MemoNode> values = properties.get(0).getChildren();
-			if (values.size() != 1)
-				System.out.println("Warning, property with multiple values");
-			if (values.size() >= 1)
-				return values.get(0).getStringValue();
-		}
-		return "";
-	}
+	/**
+	 * Convenience method to store a property pattern for this node. This method
+	 * will store the given propValue as a child of an intermediate propName node, which 
+	 * will be stored as a child to the current node. (current->propName->propValue)
+	 * Existing propNames for this node will lead to an update of the value.
+	 * 
+	 * @see #getPropertyValue(String propName)
+	 * @param propName the name of this property, must be unique for this node.
+	 * @param propValue the (new) value of this property.
+	 * 
+	 */
 	public void setPropertyValue(String propName, String propValue){
 		if (propName == null) return;
 		if (propValue == null) propValue="";
@@ -301,6 +437,25 @@ public class MemoNode implements Comparable<MemoNode> {
 							+ propName + "," + propValue + ")!");
 		}
 	}
+	/**
+	 * Convenience method to get a property pattern for this node. 
+	 * 
+	 * @see #setPropertyValue(String propName,String propValue)
+	 * @param propName the name of the property to retrieve
+	 * 
+	 */
+	public String getPropertyValue(String propName){
+		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
+		if (properties.size() == 1) {
+			ArrayList<MemoNode> values = properties.get(0).getChildren();
+			if (values.size() != 1)
+				System.out.println("Warning, property with multiple values");
+			if (values.size() >= 1)
+				return values.get(0).getStringValue();
+		}
+		return "";
+	}
+
 	private class StepState{
 		
 		private boolean matched = false;
@@ -368,7 +523,12 @@ public class MemoNode implements Comparable<MemoNode> {
 		if (preamble) return new StepState(true,"preamble return.",query,toCompare);
 		return new StepState(false,"Pattern didn't match entirely.",query,toCompare);
 	}
-
+	/**
+	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
+	 * (Full documentation is still on the todo list:) )
+	 * 
+	 * @see "MemoServlet.java for an example of searching."
+	 */
 	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
 			ArrayList<MemoNode> patterns, int topx, HashMap<String,String> arguments) {
 
@@ -390,6 +550,12 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result;
 	}
 
+	/**
+	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
+	 * (Full documentation is still on the todo list:) )
+	 * 
+	 * @see "MemoServlet.java for an example of searching."
+	 */
 	public ArrayList<MemoNode> search(MemoNode algorithm, int topx, HashMap<String,String> arguments) {
 		ArrayList<MemoNode> preambles = algorithm.getChildrenByStringValue(
 				"PreAmble", -1);
@@ -398,6 +564,12 @@ public class MemoNode implements Comparable<MemoNode> {
 		return this.search(preambles, patterns, topx, arguments);
 	}
 
+	/**
+	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
+	 * (Full documentation is still on the todo list:) )
+	 * 
+	 * @see "MemoServlet.java for an example of searching."
+	 */
 	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
 			int topx, HashMap<String,String> arguments) {
 		ArrayList<MemoNode> preambles = new ArrayList<MemoNode>(1);
@@ -406,8 +578,15 @@ public class MemoNode implements Comparable<MemoNode> {
 		patterns.add(pattern);
 		return this.search(preambles, patterns, topx, arguments);
 	}
-	//TODO: prevent loops
+	/**
+	 * Return the subgraph below this node as a JSON object suitable for the chap network
+	 * viewer.
+	 * 
+	 * @see <a href="http://almende.github.com/chap-links-library/network.html">CHAP network viewer</a>
+	 * @param depth maximum depth of the subgraph to retrieve. (set to 0 for unlimited =dangerous)
+	 */
 	public String toJSONString(int depth){
+		//TODO: prevent loops
 		JSONTuple tuple = this.toJSON(depth);
 		JSONObject result = new JSONObject().
 							element("nodes", tuple.nodes).
@@ -415,7 +594,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result.toString();
 	}
 
-	public JSONTuple toJSON(int depth) {
+	protected JSONTuple toJSON(int depth) {
 		JSONTuple result = new JSONTuple();
 		
 		ArrayList<MemoNode> children = this.getChildren();
