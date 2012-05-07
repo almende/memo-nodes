@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Vector;
 import java.util.regex.Pattern;
 
 import net.sf.json.JSONObject;
@@ -21,6 +22,13 @@ public class MemoNode implements Comparable<MemoNode> {
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
+	
+	public static void flushDB(){
+		MemoWriteBus.getBus().flush();
+	}
+	public static void emptyDB(){
+		MemoWriteBus.emptyDB();
+	}
 	
 	public static MemoNode getRootNode() {
 		MemoReadBus readBus = MemoReadBus.getBus();
@@ -143,17 +151,29 @@ public class MemoNode implements Comparable<MemoNode> {
 	public void delChild(MemoNode child){
 		delChild(child.getId());			
 	}
+	
 	public void delete(boolean recursive){
-		this.update((byte[])null);
-		this.parents.clear();
+		MemoNode current = this;
+		current.update((byte[])null);
+		current.parents.clear();
 		if (!recursive) {
-			this.children.clear();
+			current.children.clear();
 			return;
 		}
-		ArrayList<MemoNode> children = this.getChildren();
-		this.children.clear();
-		for (MemoNode child : children){
-			child.delete(true);
+		/*
+		 * Below is a Heap-based implementation of the recursive deletion algorithm.
+		 */
+		Vector<MemoNode> todo = new Vector<MemoNode>(20);
+		while (current != null){
+			ArrayList<MemoNode> children = current.getChildren();
+			todo.ensureCapacity(children.size()+todo.size());
+			todo.addAll(children);
+			current.delete(false);
+			if (todo.size()>0){
+				current = todo.remove(0);
+			} else {
+				break;
+			}
 		}
 	}
 	public byte[] getValue(){

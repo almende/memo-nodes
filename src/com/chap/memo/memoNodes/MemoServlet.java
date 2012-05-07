@@ -36,7 +36,7 @@ public class MemoServlet extends HttpServlet {
 		resp.setContentType("text/plain");
 		String cleanDBParm = req.getParameter("cleanDB");
 		if (cleanDBParm != null) {
-			MemoWriteBus.emptyDB();
+			MemoNode.emptyDB();
 			log(resp,true,"\nDatabase cleared!");
 		
 			if (cleanDBParm.equals("only")) return;
@@ -53,13 +53,13 @@ public class MemoServlet extends HttpServlet {
 		MemoNode first = new MemoNode(title);	
 		log(resp,test(first.getStringValue(),title),"Write/Read cycle",":"+first.getStringValue());
 		
-		first = MemoReadBus.getBus().find(first.getId());
+		first = new MemoNode(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 		
-		MemoWriteBus.getBus().flush();
+		MemoNode.flushDB();
 		log(resp,test(first.getStringValue(),title),"Read after flush",": "+first.getId()+"/"+first.getStringValue());
 		
-		first = MemoReadBus.getBus().find(first.getId());
+		first = new MemoNode(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
 		
 		log(resp,true,"\nUpdating node value:");
@@ -67,7 +67,7 @@ public class MemoServlet extends HttpServlet {
 		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
 		
-		first = MemoReadBus.getBus().find(first.getId());
+		first = new MemoNode(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 
 		log(resp,true,"\nAgain updating node value:");
@@ -75,15 +75,15 @@ public class MemoServlet extends HttpServlet {
 		first.update(title);
 		log(resp,test(first.getStringValue(),title),"Write/Read cycle",": "+first.getId()+"/"+first.getStringValue());
 		
-		first = MemoReadBus.getBus().find(first.getId());
+		first = new MemoNode(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus",": "+first.getId()+"/"+first.getStringValue());
 		
-		MemoWriteBus.getBus().flush();
+		MemoNode.flushDB();
 		log(resp,test(first.getStringValue(),title),"Read after flush",": "+first.getId()+"/"+first.getStringValue());
 		
-		first = MemoReadBus.getBus().find(first.getId());
+		first = new MemoNode(first.getId());
 		log(resp,test(first.getStringValue(),title),"Read from readBus after flush",": "+first.getId()+"/"+first.getStringValue());		
-		
+
 		log(resp, true, "\nStoring a null value into node:");
 		first.update((byte[])null);
 		log(resp,test(first.getStringValue(),""),"Reading string leads to empty string",": "+first.getId()+"/"+first.getStringValue());
@@ -103,8 +103,8 @@ public class MemoServlet extends HttpServlet {
 		log(resp,(second.getParents().size()==1),"Child has one parent",":"+second.getId()+":"+second.getParents().size());
 		log(resp,test(first.getChildren().get(0).getStringValue(),secondTitle),"Child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		
-		MemoWriteBus.getBus().flush();
-		second = MemoReadBus.getBus().find(first.getId()).getChildren().get(0);
+		MemoNode.flushDB();
+		second = new MemoNode(first.getId()).getChildren().get(0);
 		log(resp,test(second.getStringValue(),secondTitle),"Child found after flush",": "+second.getId()+"/"+second.getStringValue());		
 		
 		secondTitle = "Second node (new Value)";
@@ -234,7 +234,7 @@ public class MemoServlet extends HttpServlet {
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
 		
-		MemoWriteBus.getBus().flush();
+		MemoNode.flushDB();
 
 		nofNodes = 10000;
 		sNofNodes = req.getParameter("nofArcs");
@@ -275,7 +275,7 @@ public class MemoServlet extends HttpServlet {
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
 		
-		MemoWriteBus.getBus().flush();
+		MemoNode.flushDB();
 		
 		start = new Date();
 
@@ -400,6 +400,22 @@ public class MemoServlet extends HttpServlet {
 		log(resp,result.size()==1,"Search 2 done in " + (time.getTime() - start.getTime())
 						+ " ms");
 
+		
+		one.delete(true);
+		result = startNode.search(algorithm, 2,arguments); // topx = 2
+		if (debug){
+			for (MemoNode res : result) {
+				log(resp,true,"Found 3: " + res.getStringValue() +"/"+ res.getId());
+			}
+		}
+		time = new Date();
+		log(resp,result.size()==0,"Search 3 done in " + (time.getTime() - start.getTime())
+						+ " ms");
+		
+		log(resp,startNode.getChildren().size()==1,"StartNode has only one child left",":"+startNode.getChildren().size());
+		for (MemoNode child: startNode.getChildren()){
+			log(resp,true,"child: "+child.getId()+"/"+child.getStringValue());
+		}
 		log(resp,true,"\nAll tests done!");
 	
 	}

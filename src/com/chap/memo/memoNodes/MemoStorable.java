@@ -56,10 +56,10 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		}
 		return result;
 	}
-	public void delete(){
+	protected void delete(){
 		if (myKey != null) delete(myKey);
 	}
-	private void delete(Key key){
+	protected void delete(Key key){
 		try {
 			Entity ent = datastore.get(key);
 			if (ent.hasProperty("next")){
@@ -70,16 +70,16 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 			e.printStackTrace();
 		}
 	}
-	public Key store(String type){
+	protected Key store(String type){
 		return store(null,type,new Date().getTime());
 	}
-	public Key store(String type,long storeDate){
+	protected Key store(String type,long storeDate){
 		return store(null,type,storeDate);
 	}
-	public Key store(Key orig,String type){
+	protected Key store(Key orig,String type){
 		return store(orig,type,new Date().getTime());
 	}
-	public Key store(Key orig,String type,long storeDate){
+	protected Key store(Key orig,String type,long storeDate){
 		final int MAXSIZE=1000000;
 		Entity ent;
 		Key next = null;
@@ -118,7 +118,7 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 	}
 	
     //Factory methods:
-	public static MemoStorable load(Entity ent){
+	protected static MemoStorable load(Entity ent){
 		byte[] result;
 		Key key = ent.getKey();
 		try {
@@ -154,7 +154,7 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 			return null;
 		}
 	}
-	public static ArrayList<MemoStorable> getChanges(String type,Date after){
+	protected static ArrayList<MemoStorable> getChanges(String type,Date after){
 		
 		Query q = new Query(type).addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
 		PreparedQuery pq = datastore.prepare(q);

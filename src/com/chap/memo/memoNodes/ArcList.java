@@ -18,14 +18,14 @@ public class ArcList {
 	
 	private long timestamp;
 	
-	public ArcList(UUID nodeId,int type){
+	protected ArcList(UUID nodeId,int type){
 		this.type=type;
 		this.nodeId=nodeId;
 	}
-	public long getTimestamp_long(){
+	protected long getTimestamp_long(){
 		return this.timestamp;
 	}
-	public ArrayList<MemoNode> getNodes(long timestamp){
+	protected ArrayList<MemoNode> getNodes(long timestamp){
 		this.arcops=readBus.getOps(nodeId,type,timestamp);
 		ops2nodes();
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
@@ -35,7 +35,7 @@ public class ArcList {
 		}
 		return result;
 	}
-	public ArrayList<MemoNode> getNodes(){
+	protected ArrayList<MemoNode> getNodes(){
 		if (this.arcops == null || readBus.opsChanged(lastUpdate)){
 			this.arcops=readBus.getOps(nodeId,type);
 			ops2nodes();
@@ -48,7 +48,7 @@ public class ArcList {
 		}
 		return result;
 	}
-	public int getLength(){
+	protected int getLength(){
 		if (this.arcops == null || readBus.opsChanged(lastUpdate)){
 			this.arcops=readBus.getOps(nodeId,type);
 			ops2nodes();
@@ -56,7 +56,7 @@ public class ArcList {
 		}
 		return this.nodes.length;
 	}
-	public void addNode(UUID other){
+	protected void addNode(UUID other){
 		if (this.arcops == null){
 			this.arcops=readBus.getOps(nodeId,type);
 			lastUpdate=new Date().getTime();
@@ -69,7 +69,7 @@ public class ArcList {
 		writeBus.store(op);
 		arcops.add(op);
 	}
-	public void delNode(UUID other){
+	protected void delNode(UUID other){
 		if (this.arcops == null){
 			this.arcops=readBus.getOps(nodeId,type);
 			lastUpdate=new Date().getTime();
@@ -83,7 +83,8 @@ public class ArcList {
 		arcops.add(op);
 	}
 
-	public void clear(){
+	protected void clear(){
+		this.getNodes();//make sure all updates are known.
 		for (UUID other: this.nodes){
 			this.delNode(other);
 		}

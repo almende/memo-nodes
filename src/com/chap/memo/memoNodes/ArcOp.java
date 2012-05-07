@@ -11,46 +11,46 @@ public class ArcOp implements Serializable,Comparable<ArcOp> {
 	private final UUID[] arc;
 	private final long timestamp;
 	
-	public ArcOp(Ops type,UUID[] arc,long timestamp){
+	protected ArcOp(Ops type,UUID[] arc,long timestamp){
 		this.type=type;
 		this.arc = arc;
 		this.timestamp=timestamp;
 	}
-	public ArcOp(Ops type,UUID[] arc,Date timestamp){
+	protected ArcOp(Ops type,UUID[] arc,Date timestamp){
 		this.type=type;
 		this.arc = arc;
 		this.timestamp=timestamp.getTime();
 	}
-	public ArcOp(Ops type,UUID parent,UUID child,long timestamp){
+	protected ArcOp(Ops type,UUID parent,UUID child,long timestamp){
 		this.type=type;
 		this.arc = new UUID[2];
 		this.arc[0]=parent;
 		this.arc[1]=child;
 		this.timestamp=timestamp;
 	}
-	public ArcOp(Ops type,UUID parent,UUID child,Date timestamp){
+	protected ArcOp(Ops type,UUID parent,UUID child,Date timestamp){
 		this.type=type;
 		this.arc = new UUID[2];
 		this.arc[0]=parent;
 		this.arc[1]=child;
 		this.timestamp=timestamp.getTime();
 	}
-	public Ops getType() {
+	protected Ops getType() {
 		return type;
 	}
-	public UUID get(int type){
+	protected UUID get(int type){
 		return arc[type];
 	}
-	public UUID getParent() {
+	protected UUID getParent() {
 		return arc[0];
 	}
-	public UUID getChild() {
+	protected UUID getChild() {
 		return arc[1];
 	}
-	public Date getTimestamp() {
+	protected Date getTimestamp() {
 		return new Date(timestamp);
 	}
-	public long getTimestamp_long() {
+	protected long getTimestamp_long() {
 		return timestamp;
 	}
 	
