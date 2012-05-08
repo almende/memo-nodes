@@ -1,10 +1,7 @@
 MemoNodes
         
-		MemoNodes is a multipurpose, graph-based data store/database implementation, 
-		which is independent of the underlying storage technology used. 
-		With the project, an in-memory and a Google cloud-based database implementation is delivered.
-		Communication with this Associative Memory, which store data and logic, can be done 
-		via HTTP, using messaging protocol JSON-RPC. The data exchanged with MemoNodes is conforming 
-		to JSON 2.0 format.
+MemoNodes is a multipurpose, graph-based data store/database implementation, which is independent of the underlying storage technology used. 
+With the project, an in-memory and a Google cloud-based database implementation is delivered. Communication with this Associative Memory, which store data and logic, can be done via HTTP, using messaging protocol JSON-RPC. The data exchanged with MemoNodes is conforming 
+to JSON 2.0 format.
 		
-		More detailed documentation is available on http://almende.github.com/MemoNodes
+More detailed documentation is available on http://almende.github.com/MemoNodes
