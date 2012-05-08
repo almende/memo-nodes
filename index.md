@@ -8,9 +8,11 @@ title: Introduction
 MemoNodes is a general purpose graph-based data storage implemented in Java.
 It provides a clear, simple and conceptually elegant API, implemented as a java library. 
 
-Download it from: <a href="dist/MemoNodes.tar.gz">tarball (binary)</a>
-Sources from:     <a href="dist/MemoNodesFull.tar.gz">tarball (Eclipse project)</a>
-Javadoc: <a href="javadoc/com/chap/memo/memoNodes/MemoNode.html">com.chap.memo.memoNodes.MemoNode</a>
+
+- Download it from:&nbsp;<a href="dist/MemoNodes.tar.gz">tarball (binary)</a>
+- Sources from:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="dist/MemoNodesFull.tar.gz">tarball (Eclipse project)</a>
+- GIT repository:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/almende/memo-nodes" target="_blank" >Github</a>
+- Javadoc:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a target="_blank" href="javadoc/com/chap/memo/memoNodes/MemoNode.html">com.chap.memo.memoNodes.MemoNode</a>
 
 
 This illustrates the possibility to build simple, efficient, and scalable data stores managed using Platform as a Service (PaaS).
