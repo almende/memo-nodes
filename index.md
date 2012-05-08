@@ -6,10 +6,12 @@ title: Introduction
 # Introduction
 
 MemoNodes is a general purpose graph-based data storage implemented in Java.
-It provides a clear, simple and conceptually elegant API, implemented as a REST-full and/or JSON-RPC interface, implementing a technology-independent database.
-There are two implementations packaged with the core graph database: 
-- an in-memory data store and 
-- one data store implementation based on Google App Engine. 
+It provides a clear, simple and conceptually elegant API, implemented as a java library. 
+
+Download it from: <a href="dist/MemoNodes.tar.gz">tarball (binary)</a>
+Sources from:     <a href="dist/MemoNodesFull.tar.gz">tarball (Eclipse project)</a>
+Javadoc: <a href="javadoc/com/chap/memo/memoNodes/MemoNode.html">com.chap.memo.memoNodes.MemoNode</a>
+
 
 This illustrates the possibility to build simple, efficient, and scalable data stores managed using Platform as a Service (PaaS).
 MemoNodes supports extensions with additional model abstraction layers for Model Driven Engineering. 
@@ -112,7 +114,7 @@ It allows dynamic data structures to be formed and transformed using links and d
 
 Among the features of MemoNodes, we count:
 
-- The “cells” of MemoNodes memory are completely immutable Nodes: any change in value and/or Arcs will lead to a new Node creation, but with the same node ID (the old value will become discarded, but still available in the node history).
+- The ï¿½cellsï¿½ of MemoNodes memory are completely immutable Nodes: any change in value and/or Arcs will lead to a new Node creation, but with the same node ID (the old value will become discarded, but still available in the node history).
 
 - Arcs point to Node IDs, all nodes representing the same value (at different times) share the same Node ID.
 
