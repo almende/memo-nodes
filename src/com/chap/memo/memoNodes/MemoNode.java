@@ -18,7 +18,7 @@ import com.eaio.uuid.UUID;
  * 
  * Copyright: Ludo Stellingwerff, Almende B.V.
  * License:   Apache License Version 2.0
- * @see <a href="chap.almende.com">Part of CHAP</a>
+ * @see <a href="http://chap.almende.com/">Part of CHAP</a>
  * 
  * @author Ludo Stellingwerff
  * @author Almende B.V.
@@ -51,9 +51,11 @@ public class MemoNode implements Comparable<MemoNode> {
 		MemoWriteBus.emptyDB();
 	}
 	/**
-	 * A node that can serve as a tree root, providing at least one anchor for the database.
+	 * Get the node that can serve as a tree root, providing at least one anchor for the database.
 	 * Use sparsely as this node will otherwise get a lot of children, better to use one or more 
 	 * intermediate nodes.
+	 * 
+	 * Root node has UUID: 00000000-0000-002a-0000-000000000000 
 	 */
 	public static MemoNode getRootNode() {
 		MemoReadBus readBus = MemoReadBus.getBus();
@@ -154,17 +156,21 @@ public class MemoNode implements Comparable<MemoNode> {
 	/**
 	 * Update node's value to specified value.
 	 * 
+	 * @return this node
 	 */
-	public void update(byte[] value){
+	public MemoNode update(byte[] value){
 		if (value == null) value =  new byte[0];
 		this.value=writeBus.store(this.getId(), value);
+		return this;
 	}
 	/**
 	 * Update node's value to specified string value.
 	 * 
+	 * @return this node
 	 */
-	public void update(String value){
+	public MemoNode update(String value){
 		this.value=writeBus.store(this.getId(), value.getBytes());
+		return this;
 	}
 	/**
 	 * Add a new parent arc between a node with specified parent UUID and this node, effectively
@@ -206,33 +212,41 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * Add a new parent arc between the specified parent node and this node, effectively
 	 * making this node a child of the provided node.
 	 * 
+	 * @return parent
 	 */
-	public void addParent(MemoNode parent){
+	public MemoNode addParent(MemoNode parent){
 		addParent(parent.getId());
+		return parent;
 	}
 	/**
 	 * Add a new child arc between the specified child node and this node, effectively making
 	 * the provided node a child of this node.
 	 * 
+	 * @return child
 	 */
-	public void addChild(MemoNode child){
-		addChild(child.getId());		
+	public MemoNode addChild(MemoNode child){
+		addChild(child.getId());
+		return child;
 	}
 	/**
 	 * Remove the parent arc between the specified parent node and this node, effectively
 	 * making this node no longer a child of the provided node.
 	 * 
+	 * @return this node
 	 */
-	public void delParent(MemoNode parent){
+	public MemoNode delParent(MemoNode parent){
 		delParent(parent.getId());
+		return this;
 	}
 	/**
 	 * Remove the child arc between this node and the provided child node, effectively making
 	 * this node no longer a parent of the provided node.
 	 * 
+	 * @return this node
 	 */
-	public void delChild(MemoNode child){
-		delChild(child.getId());			
+	public MemoNode delChild(MemoNode child){
+		delChild(child.getId());
+		return this;
 	}
 	/**
 	 * Get current value of node. If node has been deleted, can't be found or has been 
@@ -325,6 +339,20 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result;
 	}
 	/**
+	 * Get a single child whose string value equals the given string. If multiple 
+	 * children are found, return the (arbitrary) first one.
+	 * 
+	 * @param value the string value to compare with
+	 * @return MemoNode child
+	 */
+	public MemoNode getChildByStringValue(String value){
+		ArrayList<MemoNode> children = getChildrenByStringValue(value,1);
+		if (children != null && children.size()>0){
+			return children.get(0);
+		}
+		return null;
+	}
+	/**
 	 * Returns all children whose string value match the given regular expression.
 	 * 
 	 * @see  java.util.regex.Pattern
@@ -412,8 +440,8 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @param propValue the (new) value of this property.
 	 * 
 	 */
-	public void setPropertyValue(String propName, String propValue){
-		if (propName == null) return;
+	public MemoNode setPropertyValue(String propName, String propValue){
+		if (propName == null) return this;
 		if (propValue == null) propValue="";
 		
 		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
@@ -436,6 +464,7 @@ public class MemoNode implements Comparable<MemoNode> {
 					.println("Error, incorrect properties found, skipping setPropertyValue("
 							+ propName + "," + propValue + ")!");
 		}
+		return this;
 	}
 	/**
 	 * Convenience method to get a property pattern for this node. 
