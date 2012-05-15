@@ -72,6 +72,12 @@ final public class JsonExport extends HttpServlet {
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
+		String cleanDBParm = req.getParameter("cleanDB");
+		if (cleanDBParm != null) {
+			MemoNode.emptyDB();	
+			if (cleanDBParm.equals("only")) return;
+		}
+		
 		int maxdepth = 10;
 		String depth = req.getParameter("maxdepth");
 		if (depth != null){
