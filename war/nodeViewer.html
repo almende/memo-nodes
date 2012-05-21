@@ -4,17 +4,26 @@
 		<script src="js/network-min.js"></script>
 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 		<script>
-			var updateNetwork = function(url) {
+		    var url="";
+			var updateNetwork = function() {
 				if(url != "") {
 					jQuery.ajax({
 						url : url,
 						success : function(responseText) {
 							var options = {
-								width : "400px",
-								height : "500px",
+								width : "100%",
+								height : "90%",
 								stabilize : false, // do not stabilize before displaying
+								"groups": {
+								    "more": {
+								    	borderColor: "red"
+								    }
+								},
 								nodes : {
 									style : "dot"
+								},
+								links : {
+									style : "arrow"
 								}
 							};
 							var json = responseText;
@@ -41,7 +50,8 @@
 	</head>
 	<body>
 		URL:
-		<input name="url" size=100 value="" onChange="updateNetwork(this.value);">
+		<input name="url" size=100 value="" onChange="url = this.value; updateNetwork();">
+		<input type="button" value="refresh" onClick="updateNetwork()">
 		<br>
 		<br>
 		<div id="myNodeView"/>
