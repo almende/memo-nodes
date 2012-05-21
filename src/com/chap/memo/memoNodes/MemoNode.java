@@ -616,32 +616,35 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public String toJSONString(int depth){
 		//TODO: prevent loops
-		JSONTuple tuple = this.toJSON(depth);
+		JSONTuple tuple = new JSONTuple();
+		this.toJSON(depth,tuple);
 		JSONObject result = new JSONObject().
 							element("nodes", tuple.nodes).
 							element("links",tuple.links);
 		return result.toString();
 	}
 
-	protected JSONTuple toJSON(int depth) {
-		JSONTuple result = new JSONTuple();
+	protected void toJSON(int depth,JSONTuple result) {
+		if (result.seenNodes.contains(this)) return;
+		result.seenNodes.add(this);
+		JSONObject node = new JSONObject().
+				 element("id",this.getId().toString()).
+				 element("title", this.getStringValue());
 		
 		ArrayList<MemoNode> children = this.getChildren();
 		if (depth-- > 0) {
 			for (MemoNode child : children) {
-				result = result.merge(child.toJSON(depth));
+				child.toJSON(depth,result);
 				result.links.add(
 						new JSONObject().
 						element("from", this.getId().toString()).
 						element("to",child.getId().toString()));
 			}
+		} 
+		if (depth < 0 && children.size()>0){
+			node.element("group", "more");
 		}
-
-		result.nodes.add(new JSONObject().
-						 element("id",this.getId().toString()).
-						 element("title", this.getStringValue()));
-
-		return result;
+		result.nodes.add(node);
 	}
 }
 class MemoQuery implements Comparable<MemoQuery> {
