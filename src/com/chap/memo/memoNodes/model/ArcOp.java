@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -10,27 +10,28 @@ import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 import org.msgpack.unpacker.Unpacker;
 
+import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.eaio.uuid.UUID;
 
 public class ArcOp implements Serializable, Comparable<ArcOp> {
 	private static final long serialVersionUID = 3848738698324348856L;
-	private final Ops type;
-	private final UUID[] arc;
-	private final long timestamp;
+	protected final OpsType type;
+	protected final UUID[] arc;
+	protected final long timestamp;
 
-	ArcOp(Ops type, UUID[] arc, long timestamp) {
+	ArcOp(OpsType type, UUID[] arc, long timestamp) {
 		this.type = type;
 		this.arc = arc;
 		this.timestamp = timestamp;
 	}
 
-	ArcOp(Ops type, UUID[] arc, Date timestamp) {
+	ArcOp(OpsType type, UUID[] arc, Date timestamp) {
 		this.type = type;
 		this.arc = arc;
 		this.timestamp = timestamp.getTime();
 	}
 
-	ArcOp(Ops type, UUID parent, UUID child, long timestamp) {
+	ArcOp(OpsType type, UUID parent, UUID child, long timestamp) {
 		this.type = type;
 		this.arc = new UUID[2];
 		this.arc[0] = parent;
@@ -38,7 +39,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		this.timestamp = timestamp;
 	}
 
-	ArcOp(Ops type, UUID parent, UUID child, Date timestamp) {
+	ArcOp(OpsType type, UUID parent, UUID child, Date timestamp) {
 		this.type = type;
 		this.arc = new UUID[2];
 		this.arc[0] = parent;
@@ -50,7 +51,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
 		ByteArrayInputStream in = new ByteArrayInputStream(msg);
 	    Unpacker unpacker = msgpack.createUnpacker(in);
-    	this.type = unpacker.read(Ops.class);
+    	this.type = unpacker.read(OpsType.class);
 		this.arc = unpacker.read(UUID[].class);
 		this.timestamp = unpacker.read(long.class);
     }
@@ -64,27 +65,27 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		packer.write(this.timestamp);
 		return out.toByteArray();
 	}
-	Ops getType() {
+	public OpsType getType() {
 		return type;
 	}
 
-	UUID get(int type) {
+	public UUID get(int type) {
 		return arc[type];
 	}
 
-	UUID getParent() {
+	public UUID getParent() {
 		return arc[0];
 	}
 
-	UUID getChild() {
+	public UUID getChild() {
 		return arc[1];
 	}
 
-	Date getTimestamp() {
+	public Date getTimestamp() {
 		return new Date(timestamp);
 	}
 
-	long getTimestamp_long() {
+	public long getTimestamp_long() {
 		return timestamp;
 	}
 

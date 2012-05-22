@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.storage;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,22 +25,24 @@ import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 
-abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
+public abstract class MemoStorable implements Serializable,
+		Comparable<MemoStorable> {
 	private static final long serialVersionUID = -5770613002073776843L;
-	static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+	static final DatastoreService datastore = DatastoreServiceFactory
+			.getDatastoreService();
 	Key myKey = null;
 	long storeTime;
 	long nanoTime;
-	
+
 	private byte[] serialize() {
 		byte[] result = null;
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		ZipOutputStream zos = new ZipOutputStream(bos);
 		try {
-			//zos.setLevel(4);
+			// zos.setLevel(4);
 			zos.putNextEntry(new ZipEntry("Object"));
 			ObjectOutputStream oos = new ObjectOutputStream(zos);
-			//ObjectOutputStream oos = new ObjectOutputStream(bos);
+			// ObjectOutputStream oos = new ObjectOutputStream(bos);
 			oos.writeObject(this);
 			oos.flush();
 			oos.reset();
@@ -56,86 +58,99 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		}
 		return result;
 	}
-	 void delete(){
-		if (myKey != null) delete(myKey);
+
+	public void delete() {
+		if (myKey != null)
+			delete(myKey);
 	}
-	 void delete(Key key){
+
+	public void delete(Key key) {
 		try {
 			Entity ent = datastore.get(key);
-			if (ent.hasProperty("next")){
-				delete((Key)ent.getProperty("next")); //recurse
+			if (ent.hasProperty("next")) {
+				delete((Key) ent.getProperty("next")); // recurse
 			}
 			datastore.delete(key);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	 Key store(String type){
-		return store(null,type,new Date().getTime());
+
+	public Key store(String type) {
+		return store(null, type, new Date().getTime());
 	}
-	 Key store(String type,long storeDate){
-		return store(null,type,storeDate);
+
+	public Key store(String type, long storeDate) {
+		return store(null, type, storeDate);
 	}
-	 Key store(Key orig,String type){
-		return store(orig,type,new Date().getTime());
+
+	public Key store(Key orig, String type) {
+		return store(orig, type, new Date().getTime());
 	}
-	 Key store(Key orig,String type,long storeDate){
-		final int MAXSIZE=1000000;
+
+	public Key store(Key orig, String type, long storeDate) {
+		final int MAXSIZE = 1000000;
 		Entity ent;
 		Key next = null;
 		this.storeTime = storeDate;
 		this.nanoTime = System.nanoTime();
-		
+
 		byte[] data = this.serialize();
 		int length = data.length;
 		int pointer = 0;
-		while (length-pointer >= MAXSIZE){
-			//Expensive, should not be used too much!
-			ent= new Entity(type+"_fragment");
-			ent.setUnindexedProperty("payload", new Blob(Arrays.copyOfRange(data, pointer, pointer+MAXSIZE)));
-			if (next != null) ent.setUnindexedProperty("next",next);
+		while (length - pointer >= MAXSIZE) {
+			// Expensive, should not be used too much!
+			ent = new Entity(type + "_fragment");
+			ent.setUnindexedProperty(
+					"payload",
+					new Blob(Arrays.copyOfRange(data, pointer, pointer
+							+ MAXSIZE)));
+			if (next != null)
+				ent.setUnindexedProperty("next", next);
 			datastore.put(ent);
 			next = ent.getKey();
-			pointer+=MAXSIZE;
+			pointer += MAXSIZE;
 		}
-		
+
 		if (orig != null) {
 			ent = new Entity(orig);
 		} else {
 			ent = new Entity(type);
 		}
-		ent.setUnindexedProperty("payload", new Blob(Arrays.copyOfRange(data, pointer, length)));
-		if (next != null) ent.setUnindexedProperty("next",next);
-		ent.setProperty("timestamp",this.storeTime);
+		ent.setUnindexedProperty("payload",
+				new Blob(Arrays.copyOfRange(data, pointer, length)));
+		if (next != null)
+			ent.setUnindexedProperty("next", next);
+		ent.setProperty("timestamp", this.storeTime);
 		datastore.put(ent);
 		myKey = ent.getKey();
-		//Try to force index writing
+		// Try to force index writing
 		try {
 			datastore.get(myKey);
 		} catch (EntityNotFoundException e) {
 		}
 		return myKey;
 	}
-	
-    //Factory methods:
-	 static MemoStorable load(Entity ent){
+
+	// Factory methods:
+	public static MemoStorable load(Entity ent) {
 		byte[] result;
 		Key key = ent.getKey();
 		try {
 			Blob blob = (Blob) ent.getProperty("payload");
-			byte[] data=blob.getBytes();
-			result=Arrays.copyOf(data,data.length);
-			
-			while (ent.hasProperty("next")){
-				//Expensive, should not be used too much!
-				Key next= (Key)ent.getProperty("next");
+			byte[] data = blob.getBytes();
+			result = Arrays.copyOf(data, data.length);
+
+			while (ent.hasProperty("next")) {
+				// Expensive, should not be used too much!
+				Key next = (Key) ent.getProperty("next");
 				ent = datastore.get(next);
 				blob = (Blob) ent.getProperty("payload");
-				data=blob.getBytes();
-				result=concat(data,result); //Add to front of result, due to the storing order
+				data = blob.getBytes();
+				result = concat(data, result); // Add to front of result, due to
+												// the storing order
 			}
-			
-				
+
 		} catch (EntityNotFoundException e) {
 			e.printStackTrace();
 			return null;
@@ -143,9 +158,10 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		MemoStorable res = _unserialize(result);
 		res.myKey = key;
 		return res;
-		
+
 	}
-	 static MemoStorable load(Key key){
+
+	public static MemoStorable load(Key key) {
 		try {
 			Entity ent = datastore.get(key);
 			return load(ent);
@@ -154,11 +170,14 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 			return null;
 		}
 	}
-	 static ArrayList<MemoStorable> getChanges(String type,Date after){
-		
-		Query q = new Query(type).addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
+
+	public static ArrayList<MemoStorable> getChanges(String type, Date after) {
+
+		Query q = new Query(type).addFilter("timestamp",
+				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
 		PreparedQuery pq = datastore.prepare(q);
-		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(pq.countEntities(withLimit(1000)));
+		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(
+				pq.countEntities(withLimit(1000)));
 		Iterator<Entity> iter = pq.asIterator();
 		while (iter.hasNext()) {
 			Entity ent = iter.next();
@@ -166,35 +185,39 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		}
 		return result;
 	}
-	
+
 	@Override
-	public int compareTo(MemoStorable other){
-		if (myKey != null && other.myKey != null && myKey.equals(other.myKey)){
+	public int compareTo(MemoStorable other) {
+		if (myKey != null && other.myKey != null && myKey.equals(other.myKey)) {
 			return 0;
 		}
-		if (this.storeTime == other.storeTime){
-			return (int) ((this.nanoTime - other.nanoTime)%Integer.MAX_VALUE);			
+		if (this.storeTime == other.storeTime) {
+			return (int) ((this.nanoTime - other.nanoTime) % Integer.MAX_VALUE);
 		}
-		return (int) ((this.storeTime - other.storeTime)%Integer.MAX_VALUE);
+		return (int) ((this.storeTime - other.storeTime) % Integer.MAX_VALUE);
 	}
+
 	@Override
-	public boolean equals(Object o){
-		if (o instanceof MemoStorable){
-			MemoStorable other = (MemoStorable)o;
-			if (myKey != null && other.myKey != null && myKey.equals(other.myKey)){
+	public boolean equals(Object o) {
+		if (o instanceof MemoStorable) {
+			MemoStorable other = (MemoStorable) o;
+			if (myKey != null && other.myKey != null
+					&& myKey.equals(other.myKey)) {
 				return true;
 			}
-			if ((myKey == null || other.myKey == null )&& this.storeTime==other.storeTime){
-				return (this.nanoTime == other.nanoTime);	
+			if ((myKey == null || other.myKey == null)
+					&& this.storeTime == other.storeTime) {
+				return (this.nanoTime == other.nanoTime);
 			}
 		}
 		return false;
 	}
+
 	@Override
-	public int hashCode(){
-		return (int) (myKey.hashCode()*this.nanoTime)%Integer.MAX_VALUE;
+	public int hashCode() {
+		return (int) (myKey.hashCode() * this.nanoTime) % Integer.MAX_VALUE;
 	}
-	
+
 	private static MemoStorable _unserialize(byte[] data) {
 		MemoStorable result = null;
 		ByteArrayInputStream bis = new ByteArrayInputStream(data);
@@ -202,7 +225,7 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		try {
 			zis.getNextEntry();
 			ObjectInputStream ios = new ObjectInputStream(zis);
-			//ObjectInputStream ios = new ObjectInputStream(bis);
+			// ObjectInputStream ios = new ObjectInputStream(bis);
 			result = (MemoStorable) ios.readObject();
 			zis.closeEntry();
 			bis.reset();
@@ -217,9 +240,8 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 		}
 		return result;
 	}
-	
-	
-	//Tools:
+
+	// Tools:
 	private static byte[] concat(byte[]... arrays) {
 		// count total number of items in the resulting array.
 		int length = 0;
@@ -234,5 +256,13 @@ abstract class MemoStorable implements Serializable,Comparable<MemoStorable> {
 			}
 		}
 		return result;
+	}
+
+	public Key getMyKey() {
+		return myKey;
+	}
+
+	public void setMyKey(Key myKey) {
+		this.myKey = myKey;
 	}
 }

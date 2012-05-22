@@ -1,10 +1,13 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.bus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.msgpack.MessagePack;
 
+import com.chap.memo.memoNodes.MemoNode;
+import com.chap.memo.memoNodes.model.ArcOp;
+import com.chap.memo.memoNodes.model.NodeValue;
 import com.eaio.uuid.UUID;
 
 public class MemoProxyBus {
@@ -16,7 +19,7 @@ public class MemoProxyBus {
 		msgpack = new MessagePack();
 		msgpack.register(UUID.class);
 	}
-	static MemoProxyBus getBus() {
+	public static MemoProxyBus getBus() {
 		return bus;
 	}
 
@@ -27,7 +30,7 @@ public class MemoProxyBus {
 		return proxyNodes.containsKey(id);
 	}
 	
-	MemoNode link(UUID id,String url){
+	public MemoNode link(UUID id,String url){
 		MemoNode result = new MemoNode(id);
 		result.isProxy = true;
 		proxyNodes.put(id, result);
@@ -35,30 +38,30 @@ public class MemoProxyBus {
 	}
 	
 	//Node API
-	MemoNode find(UUID id){
+	public MemoNode find(UUID id){
 		MemoNode result = MemoReadBus.getBus().find(id);
 		proxyNodes.put(id, result);
 		return result;
 	}
-	MemoNode find(UUID uuid, long timestamp) {
+	public MemoNode find(UUID uuid, long timestamp) {
 		return MemoReadBus.getBus().find(uuid,timestamp);
 	}
-	NodeValue getValue(UUID uuid) {
+	public NodeValue getValue(UUID uuid) {
 		return MemoReadBus.getBus().getValue(uuid);
 	}
-	NodeValue getValue(UUID uuid, long timestamp) {
+	public NodeValue getValue(UUID uuid, long timestamp) {
 		return MemoReadBus.getBus().getValue(uuid,timestamp);
 	}
-	ArrayList<ArcOp> getOps(UUID uuid, int type) {
+	public ArrayList<ArcOp> getOps(UUID uuid, int type) {
 		return MemoReadBus.getBus().getOps(uuid, type);
 	}
-	ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
 		return MemoReadBus.getBus().getOps(uuid, type, timestamp);
 	}
-	NodeValue store(UUID id, byte[] value) {
+	public NodeValue store(UUID id, byte[] value) {
 		return MemoWriteBus.getBus().store(id, value);
 	}
-	void store(ArcOp op) {
+	public void store(ArcOp op) {
 		MemoWriteBus.getBus().store(op);
 	}
 }

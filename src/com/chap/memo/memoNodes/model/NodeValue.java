@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -10,6 +10,7 @@ import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 import org.msgpack.unpacker.Unpacker;
 
+import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.eaio.uuid.UUID;
 
 public class NodeValue implements Serializable {
@@ -19,13 +20,13 @@ public class NodeValue implements Serializable {
 	private final byte[] value;
 	private final long timestamp;
 
-	NodeValue(UUID id, byte[] value, long timestamp) {
+	public NodeValue(UUID id, byte[] value, long timestamp) {
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp;
 	}
 
-	NodeValue(UUID id, byte[] value, Date timestamp) {
+	public NodeValue(UUID id, byte[] value, Date timestamp) {
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp.getTime();
@@ -50,19 +51,19 @@ public class NodeValue implements Serializable {
 		return out.toByteArray();
 	}
 	
-	UUID getId() {
+	public UUID getId() {
 		return id;
 	}
 
-	byte[] getValue() {
+	public byte[] getValue() {
 		return value;
 	}
 
-	Date getTimestamp() {
+	public Date getTimestamp() {
 		return new Date(timestamp);
 	}
 
-	long getTimestamp_long() {
+	public long getTimestamp_long() {
 		return timestamp;
 	}
 

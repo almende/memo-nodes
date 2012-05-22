@@ -1,7 +1,13 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.bus;
 
 import java.util.Date;
 
+import com.chap.memo.memoNodes.model.ArcOp;
+import com.chap.memo.memoNodes.model.NodeValue;
+import com.chap.memo.memoNodes.storage.ArcOpIndex;
+import com.chap.memo.memoNodes.storage.ArcOpShard;
+import com.chap.memo.memoNodes.storage.NodeValueIndex;
+import com.chap.memo.memoNodes.storage.NodeValueShard;
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -22,11 +28,11 @@ public class MemoWriteBus {
 		ops = new ArcOpShard();
 	};
 
-	static MemoWriteBus getBus() {
+	public static MemoWriteBus getBus() {
 		return bus;
 	}
 
-	static void emptyDB() {
+	public static void emptyDB() {
 		// create one big cleanup query
 		String[] types = { "NodeValueIndex", "ArcOpIndex", "NodeValueShard",
 				"ArcOpShard" };
@@ -47,15 +53,15 @@ public class MemoWriteBus {
 		System.out.println("Database cleared!");
 	}
 
-	void flush() {
+	public void flush() {
 		flushValues();
 		flushOps();
 		MemoReadBus.getBus().updateIndexes();
 	}
 
-	void flushValues() {
-		synchronized (values.nodes) {
-			if (values.nodes.size() > 0) {
+	public void flushValues() {
+		synchronized (values.getNodes()) {
+			if (values.getNodes().size() > 0) {
 				NodeValueIndex index = new NodeValueIndex(values);
 				MemoReadBus.getBus().addValueIndex(index, values);
 				values = new NodeValueShard();
@@ -63,9 +69,9 @@ public class MemoWriteBus {
 		}
 	}
 
-	void flushOps() {
+	public void flushOps() {
 		synchronized (ops) {
-			if (ops.currentSize > 0) {
+			if (ops.getCurrentSize() > 0) {
 				ArcOpIndex index = new ArcOpIndex(ops);
 				MemoReadBus.getBus().addOpsIndex(index, ops);
 				ops = new ArcOpShard();
@@ -73,21 +79,21 @@ public class MemoWriteBus {
 		}
 	}
 
-	NodeValue store(UUID id, byte[] value) {
+	public NodeValue store(UUID id, byte[] value) {
 		long now = new Date().getTime();
 		NodeValue result = new NodeValue(id, value, now);
 		values.store(result);
 		MemoReadBus.getBus().lastValueChange = now;
-		if (values.nodes.size() >= NodeValueShard.SHARDSIZE) {
+		if (values.getNodes().size() >= NodeValueShard.SHARDSIZE) {
 			flushValues();
 		}
 		return result;
 	}
 
-	void store(ArcOp op) {
+	public void store(ArcOp op) {
 		ops.store(op);
 		MemoReadBus.getBus().lastOpsChange = new Date().getTime();
-		if (ops.currentSize >= ArcOpShard.SHARDSIZE) {
+		if (ops.getCurrentSize() >= ArcOpShard.SHARDSIZE) {
 			flushOps();
 		}
 	}

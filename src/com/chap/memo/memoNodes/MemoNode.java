@@ -10,6 +10,13 @@ import java.util.Vector;
 import java.util.regex.Pattern;
 
 import net.sf.json.JSONObject;
+
+import com.chap.memo.memoNodes.bus.MemoProxyBus;
+import com.chap.memo.memoNodes.bus.MemoReadBus;
+import com.chap.memo.memoNodes.bus.MemoWriteBus;
+import com.chap.memo.memoNodes.model.ArcList;
+import com.chap.memo.memoNodes.model.NodeValue;
+import com.chap.memo.memoNodes.servlet.JSONTuple;
 import com.eaio.uuid.UUID;
 
 /**
@@ -38,7 +45,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
-	boolean isProxy=false;
+	public boolean isProxy=false;
 	
 	/**
 	 * Makes sure all graph changes are written to the datastore. It is advisable to run this
@@ -155,7 +162,7 @@ public class MemoNode implements Comparable<MemoNode> {
 			this.value=writeBus.store(uuid, value.getBytes());		
 		}
 	}
-	protected MemoNode(NodeValue value){
+	public MemoNode(NodeValue value){
 		if (value!=null){
 			this.uuid=value.getId();
 			this.value=value;
@@ -651,14 +658,14 @@ public class MemoNode implements Comparable<MemoNode> {
 		JSONTuple tuple = new JSONTuple();
 		this.toJSON(depth,tuple);
 		JSONObject result = new JSONObject().
-							element("nodes", tuple.nodes).
-							element("links",tuple.links);
+							element("nodes", tuple.getNodes()).
+							element("links",tuple.getLinks());
 		return result.toString();
 	}
 
 	private void toJSON(int depth,JSONTuple result) {
-		if (result.seenNodes.contains(this)) return;
-		result.seenNodes.add(this);
+		if (result.getSeenNodes().contains(this)) return;
+		result.getSeenNodes().add(this);
 		JSONObject node = new JSONObject().
 				 element("id",this.getId().toString()).
 				 element("title", this.getStringValue());
@@ -667,7 +674,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		if (depth-- > 0) {
 			for (MemoNode child : children) {
 				child.toJSON(depth,result);
-				result.links.add(
+				result.getLinks().add(
 						new JSONObject().
 						element("from", this.getId().toString()).
 						element("to",child.getId().toString()));
@@ -676,16 +683,16 @@ public class MemoNode implements Comparable<MemoNode> {
 		if (depth < 0 && children.size()>0){
 			node.element("group", "more");
 		}
-		result.nodes.add(node);
+		result.getNodes().add(node);
 	}
 	
-	byte[] valueToMsg() throws IOException{
+	public byte[] valueToMsg() throws IOException{
 		return this.value.toMsg();
 	}
-	byte[] parentsToMsg() throws IOException{
+	public byte[] parentsToMsg() throws IOException{
 		return this.parents.toMsg();	
 	}
-	byte[] childrenToMsg() throws IOException{
+	public byte[] childrenToMsg() throws IOException{
 		return this.children.toMsg();	
 	}
 }

@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.servlet;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.msgpack.MessagePack;
 import org.msgpack.unpacker.Unpacker;
 
+import com.chap.memo.memoNodes.MemoNode;
 import com.eaio.uuid.UUID;
 
 /*
@@ -19,7 +20,7 @@ import com.eaio.uuid.UUID;
 public class MemoServlet extends HttpServlet {
 	private static final long serialVersionUID = 4288460220487327301L;
 	private static final Logger log = Logger
-			.getLogger(com.chap.memo.memoNodes.MemoServlet.class.getName());
+			.getLogger(com.chap.memo.memoNodes.servlet.MemoServlet.class.getName());
 
 	public void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {

@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.bus;
 
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 
@@ -8,6 +8,15 @@ import java.util.Date;
 import java.util.Map;
 import java.util.TreeSet;
 
+import com.chap.memo.memoNodes.MemoNode;
+import com.chap.memo.memoNodes.model.ArcOp;
+import com.chap.memo.memoNodes.model.NodeValue;
+import com.chap.memo.memoNodes.storage.ArcOpIndex;
+import com.chap.memo.memoNodes.storage.ArcOpShard;
+import com.chap.memo.memoNodes.storage.MemoStorable;
+import com.chap.memo.memoNodes.storage.NodeValueIndex;
+import com.chap.memo.memoNodes.storage.NodeValueShard;
+import com.chap.memo.memoNodes.util.MyMap;
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -82,13 +91,13 @@ public class MemoReadBus {
 	}
 
 	void addValueIndex(NodeValueIndex index, NodeValueShard shard) {
-		NodeValueShards.put(index.shardKey, shard);
+		NodeValueShards.put(index.getShardKey(), shard);
 		NodeValueIndexes.add(index);
 		lastValueChange = new Date().getTime();
 	}
 
 	void addOpsIndex(ArcOpIndex index, ArcOpShard shard) {
-		ArcOpShards.put(index.shardKey, shard);
+		ArcOpShards.put(index.getShardKey(), shard);
 		ArcOpIndexes.add(index);
 		lastOpsChange = new Date().getTime();
 	}
@@ -97,19 +106,19 @@ public class MemoReadBus {
 		loadIndexes(false, 0);
 	};
 
-	static MemoReadBus getBus() {
+	public static MemoReadBus getBus() {
 		return bus;
 	}
 
-	boolean valueChanged(long timestamp) {
+	public boolean valueChanged(long timestamp) {
 		return timestamp <= lastValueChange;
 	}
 
-	boolean opsChanged(long timestamp) {
+	public boolean opsChanged(long timestamp) {
 		return timestamp <= lastOpsChange;
 	}
 
-	MemoNode find(UUID uuid) {
+	public MemoNode find(UUID uuid) {
 		NodeValue value = getValue(uuid);
 		if (value != null) {
 			return new MemoNode(value);
@@ -117,7 +126,7 @@ public class MemoReadBus {
 		return null;
 	}
 
-	MemoNode find(UUID uuid, long timestamp) {
+	public MemoNode find(UUID uuid, long timestamp) {
 		NodeValue value = getValue(uuid, timestamp);
 		if (value != null) {
 			return new MemoNode(value);
@@ -125,23 +134,23 @@ public class MemoReadBus {
 		return null;
 	}
 
-	ArrayList<MemoNode> findAll(UUID uuid) {
+	public ArrayList<MemoNode> findAll(UUID uuid) {
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(100);
 		if (NodeValueIndexes.size() <= 0)
 			return result;
 		NodeValueIndex index = NodeValueIndexes.last();
 		while (index != null) {
-			if (index.nodeIds.contains(uuid)) {
+			if (index.getNodeIds().contains(uuid)) {
 				NodeValueShard shard;
 				synchronized (NodeValueShards) {
-					if (NodeValueShards.containsKey(index.shardKey)) {
-						shard = NodeValueShards.get(index.shardKey);
+					if (NodeValueShards.containsKey(index.getShardKey())) {
+						shard = NodeValueShards.get(index.getShardKey());
 					} else {
 						shard = (NodeValueShard) MemoStorable
-								.load(index.shardKey);
+								.load(index.getShardKey());
 					}
 				}
-				NodeValueShards.put(shard.myKey, shard);
+				NodeValueShards.put(shard.getMyKey(), shard);
 				for (NodeValue nv : shard.findAll(uuid)) {
 					result.add(new MemoNode(nv));
 				}
@@ -152,11 +161,11 @@ public class MemoReadBus {
 		return result;
 	}
 
-	NodeValue getValue(UUID uuid) {
+	public NodeValue getValue(UUID uuid) {
 		return getValue(uuid, new Date().getTime());
 	}
 
-	NodeValue getValue(UUID uuid, long timestamp) {
+	public NodeValue getValue(UUID uuid, long timestamp) {
 		NodeValue result = null;
 
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
@@ -166,18 +175,18 @@ public class MemoReadBus {
 			return result;
 		NodeValueIndex index = NodeValueIndexes.last();
 		while (index != null
-				&& (result == null || index.newest > result.getTimestamp_long())) {
-			if (index.oldest < timestamp && index.nodeIds.contains(uuid)) {
+				&& (result == null || index.getNewest() > result.getTimestamp_long())) {
+			if (index.getOldest() < timestamp && index.getNodeIds().contains(uuid)) {
 				NodeValueShard shard = null;
 				synchronized (NodeValueShards) {
-					if (NodeValueShards.containsKey(index.shardKey)) {
-						shard = NodeValueShards.get(index.shardKey);
+					if (NodeValueShards.containsKey(index.getShardKey())) {
+						shard = NodeValueShards.get(index.getShardKey());
 					}
 				}
 				if (shard == null) {
-					shard = (NodeValueShard) MemoStorable.load(index.shardKey);
+					shard = (NodeValueShard) MemoStorable.load(index.getShardKey());
 				}
-				NodeValueShards.put(shard.myKey, shard);
+				NodeValueShards.put(shard.getMyKey(), shard);
 				NodeValue res = shard.findBefore(uuid, timestamp);
 				if (result == null
 						|| res.getTimestamp_long() > result.getTimestamp_long()) {
@@ -189,11 +198,11 @@ public class MemoReadBus {
 		return result;
 	}
 
-	ArrayList<ArcOp> getOps(UUID uuid, int type) {
+	public ArrayList<ArcOp> getOps(UUID uuid, int type) {
 		return getOps(uuid, type, new Date().getTime());
 	}
 
-	ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);
 
 		if (ArcOpIndexes.size() > 0) {
@@ -201,18 +210,18 @@ public class MemoReadBus {
 			while (index != null) {
 				switch (type) {
 				case 0: // parentList, UUID is child
-					if (index.children.contains(uuid)) {
+					if (index.getChildren().contains(uuid)) {
 						ArcOpShard shard = null;
 						synchronized (NodeValueShards) {
-							if (ArcOpShards.containsKey(index.shardKey)) {
-								shard = ArcOpShards.get(index.shardKey);
+							if (ArcOpShards.containsKey(index.getShardKey())) {
+								shard = ArcOpShards.get(index.getShardKey());
 							}
 						}
 						if (shard == null) {
 							shard = (ArcOpShard) MemoStorable
-									.load(index.shardKey);
+									.load(index.getShardKey());
 						}
-						ArcOpShards.put(shard.myKey, shard);
+						ArcOpShards.put(shard.getMyKey(), shard);
 						for (ArcOp op : shard.getChildOps(uuid)) {
 							if (op.getTimestamp_long() <= timestamp) {
 								result.add(op);
@@ -221,18 +230,18 @@ public class MemoReadBus {
 					}
 					break;
 				case 1: // parentList, UUID is child
-					if (index.parents.contains(uuid)) {
+					if (index.getParents().contains(uuid)) {
 						ArcOpShard shard = null;
 						synchronized (NodeValueShards) {
-							if (ArcOpShards.containsKey(index.shardKey)) {
-								shard = ArcOpShards.get(index.shardKey);
+							if (ArcOpShards.containsKey(index.getShardKey())) {
+								shard = ArcOpShards.get(index.getShardKey());
 							}
 						}
 						if (shard == null) {
 							shard = (ArcOpShard) MemoStorable
-									.load(index.shardKey);
+									.load(index.getShardKey());
 						}
-						ArcOpShards.put(shard.myKey, shard);
+						ArcOpShards.put(shard.getMyKey(), shard);
 						for (ArcOp op : shard.getParentOps(uuid)) {
 							if (op.getTimestamp_long() <= timestamp) {
 								result.add(op);

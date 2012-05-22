@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,6 +11,10 @@ import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 import org.msgpack.unpacker.Unpacker;
 
+import com.chap.memo.memoNodes.MemoNode;
+import com.chap.memo.memoNodes.bus.MemoProxyBus;
+import com.chap.memo.memoNodes.bus.MemoReadBus;
+import com.chap.memo.memoNodes.bus.MemoWriteBus;
 import com.eaio.uuid.UUID;
 
 public class ArcList {
@@ -27,13 +31,13 @@ public class ArcList {
 
 	private long timestamp;
 
-	ArcList(UUID nodeId, int type, boolean isProxy) {
+	public ArcList(UUID nodeId, int type, boolean isProxy) {
 		this.type = type;
 		this.nodeId = nodeId;
 		this.isProxy = isProxy;
 	}
 
-	ArcList(UUID nodeId,int type,byte[] msg) throws IOException{
+	public ArcList(UUID nodeId,int type,byte[] msg) throws IOException{
 		this.type = type;
 		this.nodeId = nodeId;
 		this.isProxy = true;
@@ -61,11 +65,11 @@ public class ArcList {
 		return out.toByteArray();
 	}
 	
-	long getTimestamp_long() {
+	public long getTimestamp_long() {
 		return this.timestamp;
 	}
 
-	void update(){
+	public void update(){
 		if (isProxy){
 			//TODO: Check for changed values
 			this.arcops = proxyBus.getOps(nodeId, type);
@@ -79,7 +83,7 @@ public class ArcList {
 		}
 	}
 	
-	ArrayList<MemoNode> getNodes(long timestamp) {
+	public ArrayList<MemoNode> getNodes(long timestamp) {
 		if (isProxy){
 			this.arcops = proxyBus.getOps(nodeId, type, timestamp);
 		} else {
@@ -97,7 +101,7 @@ public class ArcList {
 		return result;
 	}
 
-	ArrayList<MemoNode> getNodes() {
+	public ArrayList<MemoNode> getNodes() {
 		update();
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.nodes.length);
 		for (UUID id : this.nodes) {
@@ -106,12 +110,12 @@ public class ArcList {
 		return result;
 	}
 
-	int getLength() {
+	public int getLength() {
 		update();
 		return this.nodes.length;
 	}
 
-	void addNode(UUID other) {
+	public void addNode(UUID other) {
 		if (this.arcops == null){ //small performance gain
 			update();
 		}
@@ -119,7 +123,7 @@ public class ArcList {
 		arc[this.type] = other;
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
-		ArcOp op = new ArcOp(Ops.ADD, arc, new Date());
+		ArcOp op = new ArcOp(OpsType.ADD, arc, new Date());
 		if (isProxy){
 			proxyBus.store(op);
 		} else {
@@ -128,7 +132,7 @@ public class ArcList {
 		arcops.add(op);
 	}
 
-	void delNode(UUID other) {
+	public void delNode(UUID other) {
 		if (this.arcops == null){ //small performance gain
 			update();
 		}
@@ -136,7 +140,7 @@ public class ArcList {
 		arc[this.type] = other;
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
-		ArcOp op = new ArcOp(Ops.DELETE, arc, new Date());
+		ArcOp op = new ArcOp(OpsType.DELETE, arc, new Date());
 		if (isProxy){
 			proxyBus.store(op);
 		} else {
@@ -145,7 +149,7 @@ public class ArcList {
 		arcops.add(op);
 	}
 
-	void clear() {
+	public void clear() {
 		update();
 		for (UUID other : this.nodes) {
 			this.delNode(other);

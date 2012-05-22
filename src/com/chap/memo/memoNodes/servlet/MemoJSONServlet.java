@@ -1,4 +1,4 @@
-package com.chap.memo.memoNodes;
+package com.chap.memo.memoNodes.servlet;
 
 import java.io.IOException;
 import java.net.URL;
@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.chap.memo.memoNodes.MemoNode;
 import com.eaio.uuid.UUID;
 
 @SuppressWarnings("serial")
