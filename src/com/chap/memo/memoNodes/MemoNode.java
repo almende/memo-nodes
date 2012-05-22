@@ -1,5 +1,6 @@
 package com.chap.memo.memoNodes;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -30,12 +31,14 @@ public class MemoNode implements Comparable<MemoNode> {
 	
 	private MemoReadBus readBus = MemoReadBus.getBus();
 	private MemoWriteBus writeBus = MemoWriteBus.getBus();
+	private MemoProxyBus proxyBus = MemoProxyBus.getBus();
 	private long lastUpdate= new Date().getTime();
 	
 	private UUID uuid;
 	private NodeValue value = null;
 	private final ArcList parents;
 	private final ArcList children;
+	boolean isProxy=false;
 	
 	/**
 	 * Makes sure all graph changes are written to the datastore. It is advisable to run this
@@ -94,8 +97,9 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public MemoNode(UUID uuid){
 		this.uuid=uuid;
-		this.parents=new ArcList(uuid,0);
-		this.children=new ArcList(uuid,1);		
+		this.isProxy=proxyBus.isProxy(uuid);
+		this.parents=new ArcList(uuid,0,isProxy);
+		this.children=new ArcList(uuid,1,isProxy);
 	}
 	/**
 	 * Create new node with specified value.
@@ -104,8 +108,8 @@ public class MemoNode implements Comparable<MemoNode> {
 	public MemoNode(byte[] value){
 		this.uuid=new UUID();
 		this.value=writeBus.store(this.uuid, value);
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
+		this.parents=new ArcList(this.uuid,0,false);
+		this.children=new ArcList(this.uuid,1,false);
 	}
 	/**
 	 * Create new node with specified string value.
@@ -114,8 +118,8 @@ public class MemoNode implements Comparable<MemoNode> {
 	public MemoNode(String value){
 		this.uuid=new UUID();
 		this.value=writeBus.store(this.uuid, value.getBytes());
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
+		this.parents=new ArcList(this.uuid,0,false);
+		this.children=new ArcList(this.uuid,1,false);
 	}
 	/**
 	 * Find or create node with specified UUID and value. If node existed it will be updated to the
@@ -125,9 +129,14 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public MemoNode(UUID uuid,byte[] value){
 		this.uuid=uuid;
-		this.value=writeBus.store(uuid, value);
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
+		this.isProxy=proxyBus.isProxy(uuid);
+		this.parents=new ArcList(this.uuid,0,isProxy);
+		this.children=new ArcList(this.uuid,1,isProxy);
+		if (this.isProxy){
+			this.value=proxyBus.store(uuid, value);
+		} else {
+			this.value=writeBus.store(uuid, value);
+		}
 	}
 	/**
 	 * Find or create node with specified UUID and value. If node existed it will be updated to the
@@ -137,9 +146,14 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */	
 	public MemoNode(UUID uuid,String value){
 		this.uuid=uuid;
-		this.value=writeBus.store(uuid, value.getBytes());		
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
+		this.isProxy=proxyBus.isProxy(uuid);
+		this.parents=new ArcList(this.uuid,0,isProxy);
+		this.children=new ArcList(this.uuid,1,isProxy);
+		if (this.isProxy){
+			this.value=proxyBus.store(uuid, value.getBytes());
+		} else {
+			this.value=writeBus.store(uuid, value.getBytes());		
+		}
 	}
 	protected MemoNode(NodeValue value){
 		if (value!=null){
@@ -150,8 +164,8 @@ public class MemoNode implements Comparable<MemoNode> {
 			this.uuid=new UUID();
 			this.value=null;
 		}
-		this.parents=new ArcList(this.uuid,0);
-		this.children=new ArcList(this.uuid,1);
+		this.parents=new ArcList(this.uuid,0,false);
+		this.children=new ArcList(this.uuid,1,false);
 	}
 	/**
 	 * Update node's value to specified value.
@@ -160,7 +174,11 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public MemoNode update(byte[] value){
 		if (value == null) value =  new byte[0];
-		this.value=writeBus.store(this.getId(), value);
+		if (this.isProxy){
+			this.value=proxyBus.store(uuid, value);
+		} else {
+			this.value=writeBus.store(this.getId(), value);
+		}
 		return this;
 	}
 	/**
@@ -169,7 +187,11 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @return this node
 	 */
 	public MemoNode update(String value){
-		this.value=writeBus.store(this.getId(), value.getBytes());
+		if (this.isProxy){
+			this.value=proxyBus.store(uuid, value.getBytes());
+		} else {
+			this.value=writeBus.store(this.getId(), value.getBytes());
+		}
 		return this;
 	}
 	/**
@@ -255,11 +277,16 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @return byte[], zero-size if node not found/empty/null
 	 */
 	public byte[] getValue(){
-		if (this.value == null || readBus.valueChanged(lastUpdate)){
-			this.value=readBus.getValue(this.uuid);
-			lastUpdate=new Date().getTime();
+		if (this.isProxy){
+			//TODO: check for valueChanged, or only update if value==null?
+			this.value = proxyBus.getValue(this.uuid);
+		} else {
+			if (this.value == null || readBus.valueChanged(lastUpdate)){
+				this.value=readBus.getValue(this.uuid);
+				lastUpdate=new Date().getTime();
+			}
 		}
-		return this.value == null?null:this.value.getValue();
+		return this.value == null?null:this.value.getValue(); 
 	}
 	/**
 	 * Get current value of node as a string. The returned string is limited to 250 bytes, for
@@ -277,7 +304,12 @@ public class MemoNode implements Comparable<MemoNode> {
 		return "";
 	}
 	public byte[] valueAt(long timestamp){
-		NodeValue oldValue = readBus.getValue(getId(), timestamp);
+		NodeValue oldValue;
+		if (this.isProxy){
+			oldValue=proxyBus.getValue(getId(), timestamp);
+		} else {
+			oldValue=readBus.getValue(getId(), timestamp);	
+		}
 		return oldValue.getValue();
 	}
 	public ArrayList<MemoNode> history(){
@@ -556,7 +588,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
 	 * (Full documentation is still on the todo list:) )
 	 * 
-	 * @see "MemoServlet.java for an example of searching."
+	 * @see "MemoTestServlet.java for an example of searching."
 	 */
 	public ArrayList<MemoNode> search(ArrayList<MemoNode> preambles,
 			ArrayList<MemoNode> patterns, int topx, HashMap<String,String> arguments) {
@@ -583,7 +615,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
 	 * (Full documentation is still on the todo list:) )
 	 * 
-	 * @see "MemoServlet.java for an example of searching."
+	 * @see "MemoTestServlet.java for an example of searching."
 	 */
 	public ArrayList<MemoNode> search(MemoNode algorithm, int topx, HashMap<String,String> arguments) {
 		ArrayList<MemoNode> preambles = algorithm.getChildrenByStringValue(
@@ -597,7 +629,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * Search for nodes according to the give Preamble(s) and Pattern(s). 
 	 * (Full documentation is still on the todo list:) )
 	 * 
-	 * @see "MemoServlet.java for an example of searching."
+	 * @see "MemoTestServlet.java for an example of searching."
 	 */
 	public ArrayList<MemoNode> search(MemoNode preamble, MemoNode pattern,
 			int topx, HashMap<String,String> arguments) {
@@ -624,7 +656,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result.toString();
 	}
 
-	protected void toJSON(int depth,JSONTuple result) {
+	private void toJSON(int depth,JSONTuple result) {
 		if (result.seenNodes.contains(this)) return;
 		result.seenNodes.add(this);
 		JSONObject node = new JSONObject().
@@ -645,6 +677,16 @@ public class MemoNode implements Comparable<MemoNode> {
 			node.element("group", "more");
 		}
 		result.nodes.add(node);
+	}
+	
+	byte[] valueToMsg() throws IOException{
+		return this.value.toMsg();
+	}
+	byte[] parentsToMsg() throws IOException{
+		return this.parents.toMsg();	
+	}
+	byte[] childrenToMsg() throws IOException{
+		return this.children.toMsg();	
 	}
 }
 class MemoQuery implements Comparable<MemoQuery> {
