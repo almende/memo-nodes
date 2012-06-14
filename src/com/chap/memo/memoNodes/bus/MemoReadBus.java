@@ -29,15 +29,20 @@ import com.google.appengine.api.datastore.QueryResultList;
 
 public class MemoReadBus {
 	// Shard caches:
+	static Map<UUID, MemoNode> nodeCache = Collections
+			.synchronizedMap(new MyMap<UUID, MemoNode>(100000, new Float(0.75),
+					true));
+
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
 			.synchronizedMap(new MyMap<Key, NodeValueShard>(5, new Float(0.75),
 					true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
-			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(0.75),
+			.synchronizedMap(new MyMap<Key, ArcOpShard>(15, new Float(0.75),
 					true));
 
 	TreeSet<NodeValueIndex> NodeValueIndexes = new TreeSet<NodeValueIndex>();
 	TreeSet<ArcOpIndex> ArcOpIndexes = new TreeSet<ArcOpIndex>();
+	
 	DatastoreService datastore = null;
 	long lastValueChange = new Date().getTime();
 	long lastOpsChange = new Date().getTime();
@@ -50,13 +55,14 @@ public class MemoReadBus {
 	}
 
 	void loadIndexes(boolean clear, long sinceTimestamp) {
-		if (datastore == null)
+		if (datastore == null){
 			datastore = DatastoreServiceFactory.getDatastoreService();
+		}
 		if (clear) {
 			NodeValueIndexes.clear();
 			ArcOpIndexes.clear();
-			lastValueChange = new Date().getTime();
-			lastOpsChange = new Date().getTime();
+			lastValueChange = System.currentTimeMillis();
+			lastOpsChange = System.currentTimeMillis();
 		}
 		Query q = new Query("NodeValueIndex").addSort("timestamp");
 		if (sinceTimestamp > 0) {
@@ -71,7 +77,7 @@ public class MemoReadBus {
 				NodeValueIndex index = (NodeValueIndex) MemoStorable.load(ent);
 				NodeValueIndexes.add(index);
 			}
-			lastValueChange = new Date().getTime();
+			lastValueChange = System.currentTimeMillis();
 		}
 
 		q = new Query("ArcOpIndex").addSort("timestamp");
@@ -86,20 +92,20 @@ public class MemoReadBus {
 				ArcOpIndex index = (ArcOpIndex) MemoStorable.load(ent);
 				ArcOpIndexes.add(index);
 			}
-			lastOpsChange = new Date().getTime();
+			lastOpsChange = System.currentTimeMillis();
 		}
 	}
 
 	void addValueIndex(NodeValueIndex index, NodeValueShard shard) {
 		NodeValueShards.put(index.getShardKey(), shard);
 		NodeValueIndexes.add(index);
-		lastValueChange = new Date().getTime();
+		lastValueChange = System.currentTimeMillis();
 	}
 
 	void addOpsIndex(ArcOpIndex index, ArcOpShard shard) {
 		ArcOpShards.put(index.getShardKey(), shard);
 		ArcOpIndexes.add(index);
-		lastOpsChange = new Date().getTime();
+		lastOpsChange = System.currentTimeMillis();
 	}
 
 	MemoReadBus() {
@@ -119,9 +125,14 @@ public class MemoReadBus {
 	}
 
 	public MemoNode find(UUID uuid) {
+		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
 		NodeValue value = getValue(uuid);
 		if (value != null) {
-			return new MemoNode(value);
+			MemoNode node = new MemoNode(value);
+			if (value.getValue().length < 10000){
+				nodeCache.put(node.getId(),node);
+			}
+			return node;
 		}
 		return null;
 	}
@@ -141,16 +152,20 @@ public class MemoReadBus {
 		NodeValueIndex index = NodeValueIndexes.last();
 		while (index != null) {
 			if (index.getNodeIds().contains(uuid)) {
-				NodeValueShard shard;
+				NodeValueShard shard = null;
 				synchronized (NodeValueShards) {
 					if (NodeValueShards.containsKey(index.getShardKey())) {
 						shard = NodeValueShards.get(index.getShardKey());
-					} else {
-						shard = (NodeValueShard) MemoStorable
-								.load(index.getShardKey());
 					}
 				}
-				NodeValueShards.put(shard.getMyKey(), shard);
+				if (shard == null){
+					shard = (NodeValueShard) MemoStorable
+							.load(index.getShardKey());
+					synchronized (NodeValueShards) {
+						NodeValueShards.put(shard.getMyKey(), shard);
+					}
+				}
+
 				for (NodeValue nv : shard.findAll(uuid)) {
 					result.add(new MemoNode(nv));
 				}
@@ -185,8 +200,10 @@ public class MemoReadBus {
 				}
 				if (shard == null) {
 					shard = (NodeValueShard) MemoStorable.load(index.getShardKey());
+					synchronized (NodeValueShards) {
+						NodeValueShards.put(shard.getMyKey(), shard);		
+					}
 				}
-				NodeValueShards.put(shard.getMyKey(), shard);
 				NodeValue res = shard.findBefore(uuid, timestamp);
 				if (result == null
 						|| res.getTimestamp_long() > result.getTimestamp_long()) {
@@ -198,31 +215,40 @@ public class MemoReadBus {
 		return result;
 	}
 
-	public ArrayList<ArcOp> getOps(UUID uuid, int type) {
-		return getOps(uuid, type, new Date().getTime());
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long since) {
+		return getOps(uuid, type, System.currentTimeMillis(),since);
 	}
-
-	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
-		ArrayList<ArcOp> result = new ArrayList<ArcOp>(100);
-
-		if (ArcOpIndexes.size() > 0) {
+//	public static int count=0;
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp, long since) {
+//		long start = System.currentTimeMillis();
+		ArrayList<ArcOp> result = new ArrayList<ArcOp>(10);
+		if (ArcOpIndexes.size() > 0 && ArcOpIndexes.last().getStoreTime() >= since) {
 			ArcOpIndex index = ArcOpIndexes.first();
 			while (index != null) {
+				if (index.getStoreTime() < since){
+					index = ArcOpIndexes.higher(index);
+					continue;
+				}
 				switch (type) {
 				case 0: // parentList, UUID is child
 					if (index.getChildren().contains(uuid)) {
 						ArcOpShard shard = null;
-						synchronized (NodeValueShards) {
+						synchronized (ArcOpShards) {
 							if (ArcOpShards.containsKey(index.getShardKey())) {
 								shard = ArcOpShards.get(index.getShardKey());
 							}
 						}
 						if (shard == null) {
+//							System.out.println("Need to load shard!");
 							shard = (ArcOpShard) MemoStorable
 									.load(index.getShardKey());
+							synchronized (ArcOpShards) {
+								ArcOpShards.put(shard.getMyKey(), shard);	
+							}
 						}
-						ArcOpShards.put(shard.getMyKey(), shard);
-						for (ArcOp op : shard.getChildOps(uuid)) {
+						ArrayList<ArcOp> children = shard.getChildOps(uuid);
+						result.ensureCapacity(children.size()+1);
+						for (ArcOp op : children) {
 							if (op.getTimestamp_long() <= timestamp) {
 								result.add(op);
 							}
@@ -232,17 +258,23 @@ public class MemoReadBus {
 				case 1: // parentList, UUID is child
 					if (index.getParents().contains(uuid)) {
 						ArcOpShard shard = null;
-						synchronized (NodeValueShards) {
-							if (ArcOpShards.containsKey(index.getShardKey())) {
+						synchronized (ArcOpShards) {
+								if (ArcOpShards.containsKey(index.getShardKey())) {
 								shard = ArcOpShards.get(index.getShardKey());
 							}
 						}
 						if (shard == null) {
+//							System.out.println("Need to load shard!");
 							shard = (ArcOpShard) MemoStorable
 									.load(index.getShardKey());
+							
+							synchronized (ArcOpShards) {
+								ArcOpShards.put(shard.getMyKey(), shard);
+							}
 						}
-						ArcOpShards.put(shard.getMyKey(), shard);
-						for (ArcOp op : shard.getParentOps(uuid)) {
+						ArrayList<ArcOp> parents = shard.getParentOps(uuid);
+						result.ensureCapacity(parents.size()+1);
+						for (ArcOp op : parents) {
 							if (op.getTimestamp_long() <= timestamp) {
 								result.add(op);
 							}
@@ -253,23 +285,34 @@ public class MemoReadBus {
 				index = ArcOpIndexes.higher(index);
 			}
 		}
+//		long half = System.currentTimeMillis();
 		switch (type) {
 		case 0: // parentList, UUID is child
-			for (ArcOp op : MemoWriteBus.getBus().ops.getChildOps(uuid)) {
-				if (op.getTimestamp_long() <= timestamp) {
+			ArrayList<ArcOp> children = MemoWriteBus.getBus().ops.getChildOps(uuid);
+			result.ensureCapacity(result.size()+children.size()+1);
+			for (ArcOp op : children) {
+				if (op.getTimestamp_long() <= timestamp && op.getTimestamp_long() >= since) {
 					result.add(op);
 				}
 			}
 			break;
 		case 1:
-			for (ArcOp op : MemoWriteBus.getBus().ops.getParentOps(uuid)) {
-				if (op.getTimestamp_long() <= timestamp) {
+			ArrayList<ArcOp> parents = MemoWriteBus.getBus().ops.getParentOps(uuid);
+			result.ensureCapacity(result.size()+parents.size()+1);
+			for (ArcOp op : parents) {
+				if (op.getTimestamp_long() <= timestamp && op.getTimestamp_long() >= since) {
 					result.add(op);
 				}
 			}
 			break;
 		}
+//		long almost = System.currentTimeMillis();
 		Collections.sort(result);
+/*		long done = System.currentTimeMillis();
+		count++;
+		if (done-start >= 2){
+			System.out.println("GetOps: ("+count+")"+ArcOpIndexes.size()+"/"+result.size()+"->"+(half-start)+ ":"+(almost-start)+":"+(done-start));
+		}*/
 		return result;
 	}
 

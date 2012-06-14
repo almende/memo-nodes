@@ -186,6 +186,14 @@ public abstract class MemoStorable implements Serializable,
 		return result;
 	}
 
+	public long getStoreTime() {
+		return storeTime;
+	}
+
+	public long getNanoTime() {
+		return nanoTime;
+	}
+
 	@Override
 	public int compareTo(MemoStorable other) {
 		if (myKey != null && other.myKey != null && myKey.equals(other.myKey)) {

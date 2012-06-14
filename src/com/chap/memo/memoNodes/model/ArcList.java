@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 
 import org.msgpack.MessagePack;
@@ -26,6 +25,7 @@ public class ArcList {
 
 	UUID[] nodes = new UUID[0];
 	ArrayList<ArcOp> arcops = null;
+	
 	int type; // 0: parent list, 1:child list
 	UUID nodeId;
 
@@ -72,22 +72,30 @@ public class ArcList {
 	public void update(){
 		if (isProxy){
 			//TODO: Check for changed values
-			this.arcops = proxyBus.getOps(nodeId, type);
+			this.arcops = proxyBus.getOps(nodeId, type, 0);
 			ops2nodes();
 		} else {
 			if (this.arcops == null || readBus.opsChanged(lastUpdate)) {
-				this.arcops = readBus.getOps(nodeId, type);
+				if (this.arcops == null){
+					this.arcops = readBus.getOps(nodeId, type, 0);	
+				} else {
+					this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
+				}
 				ops2nodes();
-				lastUpdate = new Date().getTime();
+				lastUpdate = System.currentTimeMillis();
 			}			
 		}
 	}
 	
 	public ArrayList<MemoNode> getNodes(long timestamp) {
 		if (isProxy){
-			this.arcops = proxyBus.getOps(nodeId, type, timestamp);
+			this.arcops = proxyBus.getOps(nodeId, type, timestamp, 0);//TODO: also incremental?
 		} else {
-			this.arcops = readBus.getOps(nodeId, type, timestamp);
+			if (this.arcops == null){
+				this.arcops = readBus.getOps(nodeId, type, timestamp, 0);
+			} else {
+				this.arcops.addAll(readBus.getOps(nodeId, type, timestamp,lastUpdate));
+			}
 		}
 		ops2nodes();
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.nodes.length);
@@ -123,7 +131,7 @@ public class ArcList {
 		arc[this.type] = other;
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
-		ArcOp op = new ArcOp(OpsType.ADD, arc, new Date());
+		ArcOp op = new ArcOp(OpsType.ADD, arc, System.currentTimeMillis());
 		if (isProxy){
 			proxyBus.store(op);
 		} else {
@@ -140,7 +148,7 @@ public class ArcList {
 		arc[this.type] = other;
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
-		ArcOp op = new ArcOp(OpsType.DELETE, arc, new Date());
+		ArcOp op = new ArcOp(OpsType.DELETE, arc, System.currentTimeMillis());
 		if (isProxy){
 			proxyBus.store(op);
 		} else {
@@ -157,6 +165,7 @@ public class ArcList {
 	}
 
 	private void ops2nodes() {
+		if (arcops == null ) arcops = new ArrayList<ArcOp>(10); 
 		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
 		for (ArcOp op : arcops) {
 			switch (op.getType()) {

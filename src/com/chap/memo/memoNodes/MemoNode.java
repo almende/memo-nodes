@@ -3,10 +3,8 @@ package com.chap.memo.memoNodes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Vector;
 import java.util.regex.Pattern;
 
 import net.sf.json.JSONObject;
@@ -36,10 +34,12 @@ import com.eaio.uuid.UUID;
 public class MemoNode implements Comparable<MemoNode> {
 	private static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
 	
+//	private static int existingNodes = 0;
+	
 	private MemoReadBus readBus = MemoReadBus.getBus();
 	private MemoWriteBus writeBus = MemoWriteBus.getBus();
 	private MemoProxyBus proxyBus = MemoProxyBus.getBus();
-	private long lastUpdate= new Date().getTime();
+	private long lastUpdate= System.currentTimeMillis();
 	
 	private UUID uuid;
 	private NodeValue value = null;
@@ -95,6 +95,11 @@ public class MemoNode implements Comparable<MemoNode> {
 			return false;
 		}
 	}
+	
+	/*	protected void finalize(){
+		if (existingNodes > 100000) System.out.println("Quite many nodes found!"+existingNodes);
+		existingNodes--;
+	}*/
 	/**
 	 * Find or create node with specified UUID. This is the recommended way to obtain 
 	 * existing nodes of which you know the UUID. If node can't be found, this node will have an
@@ -103,6 +108,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
 	 */
 	public MemoNode(UUID uuid){
+//		existingNodes++;
 		this.uuid=uuid;
 		this.isProxy=proxyBus.isProxy(uuid);
 		this.parents=new ArcList(uuid,0,isProxy);
@@ -113,6 +119,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * 
 	 */
 	public MemoNode(byte[] value){
+//		existingNodes++;
 		this.uuid=new UUID();
 		this.value=writeBus.store(this.uuid, value);
 		this.parents=new ArcList(this.uuid,0,false);
@@ -123,6 +130,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * 
 	 */	
 	public MemoNode(String value){
+//		existingNodes++;
 		this.uuid=new UUID();
 		this.value=writeBus.store(this.uuid, value.getBytes());
 		this.parents=new ArcList(this.uuid,0,false);
@@ -135,6 +143,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
 	 */
 	public MemoNode(UUID uuid,byte[] value){
+//		existingNodes++;
 		this.uuid=uuid;
 		this.isProxy=proxyBus.isProxy(uuid);
 		this.parents=new ArcList(this.uuid,0,isProxy);
@@ -152,6 +161,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @see <a href="http://johannburkard.de/software/uuid/">http://johannburkard.de/software/uuid/</a>
 	 */	
 	public MemoNode(UUID uuid,String value){
+//		existingNodes++;
 		this.uuid=uuid;
 		this.isProxy=proxyBus.isProxy(uuid);
 		this.parents=new ArcList(this.uuid,0,isProxy);
@@ -163,6 +173,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		}
 	}
 	public MemoNode(NodeValue value){
+//		existingNodes++;
 		if (value!=null){
 			this.uuid=value.getId();
 			this.value=value;
@@ -290,7 +301,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		} else {
 			if (this.value == null || readBus.valueChanged(lastUpdate)){
 				this.value=readBus.getValue(this.uuid);
-				lastUpdate=new Date().getTime();
+				lastUpdate=System.currentTimeMillis();
 			}
 		}
 		return this.value == null?null:this.value.getValue(); 
@@ -446,16 +457,17 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public void delete(boolean recursive){
 		MemoNode current = this;
-		current.update((byte[])null);
-		current.parents.clear();
 		if (!recursive) {
+			current.update((byte[])null);
+			current.parents.clear();
 			current.children.clear();
 			return;
 		}
+//		System.out.println("Recursive delete called: "+ existingNodes);
 		/*
 		 * Below is a Heap-based implementation of the recursive deletion algorithm.
 		 */
-		Vector<MemoNode> todo = new Vector<MemoNode>(20);
+		ArrayList<MemoNode> todo = new ArrayList<MemoNode>(20);
 		while (current != null){
 			ArrayList<MemoNode> children = current.getChildren();
 			todo.ensureCapacity(children.size()+todo.size());
@@ -467,6 +479,7 @@ public class MemoNode implements Comparable<MemoNode> {
 				break;
 			}
 		}
+//		System.out.println("Recursive delete finished: "+ existingNodes);
 	}
 	/**
 	 * Convenience method to store a property pattern for this node. This method

@@ -12,7 +12,7 @@ import com.eaio.uuid.UUID;
 
 public class MemoProxyBus {
 	private final static MemoProxyBus bus = new MemoProxyBus();
-	HashMap<UUID,MemoNode> proxyNodes = new HashMap<UUID,MemoNode>();
+	HashMap<UUID,MemoNode> proxyNodes = new HashMap<UUID,MemoNode>(10000);
 	private static MessagePack msgpack; 
 
 	private MemoProxyBus(){
@@ -52,11 +52,11 @@ public class MemoProxyBus {
 	public NodeValue getValue(UUID uuid, long timestamp) {
 		return MemoReadBus.getBus().getValue(uuid,timestamp);
 	}
-	public ArrayList<ArcOp> getOps(UUID uuid, int type) {
-		return MemoReadBus.getBus().getOps(uuid, type);
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long since) {
+		return MemoReadBus.getBus().getOps(uuid, type, since);
 	}
-	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp) {
-		return MemoReadBus.getBus().getOps(uuid, type, timestamp);
+	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp, long since) {
+		return MemoReadBus.getBus().getOps(uuid, type, timestamp, since);
 	}
 	public NodeValue store(UUID id, byte[] value) {
 		return MemoWriteBus.getBus().store(id, value);

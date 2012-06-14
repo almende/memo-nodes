@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.bus.MemoProxyBus;
+import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.model.NodeValue;
 
 @SuppressWarnings("serial")
@@ -145,6 +146,7 @@ public class MemoTestServlet extends HttpServlet {
 		log(resp,true,"First child found",": "+first.getId()+"|"+first.getChildren().get(0).getId()+"/"+first.getChildren().get(0).getStringValue());
 		log(resp,true,"Second child found",": "+first.getId()+"|"+first.getChildren().get(1).getId()+"/"+first.getChildren().get(1).getStringValue());
 
+		MemoNode.flushDB();
 		log(resp,true,"\nRemove child and re-adding it (in multiple Arcop shards):");
 		first.delChild(second);
 		log(resp,(first.getChildren().size()==1),"Parent has one child",":"+first.getId()+":"+first.getChildren().size());
@@ -230,8 +232,9 @@ public class MemoTestServlet extends HttpServlet {
 			}
 		}
 		Date start = new Date();
-		log(resp,true,"\nPerformance test: Depth");
-		
+		log(resp,true,"\nPerformance test: Depth ("+nofNodes+")");
+
+//		MemoReadBus.count=0;
 		MemoNode node = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
 			MemoNode newNode = new MemoNode(new Integer(i).toString());
@@ -240,8 +243,10 @@ public class MemoTestServlet extends HttpServlet {
 		}
 		Date time = new Date();
 		log(resp,true,"Storing done in: "+(time.getTime() - start.getTime())+" ms");
+		
+//		MemoReadBus.count=0;
 		MemoNode startNode = node;
-
+		
 		int count = 0;
 		while (node != null) {
 			ArrayList<MemoNode> children = node.getChildren();
@@ -259,13 +264,14 @@ public class MemoTestServlet extends HttpServlet {
 				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 
+//		MemoReadBus.count=0;
 		time = new Date();
 		startNode.delete(true);
 		log(resp,true,
 				" Nodes deleted again in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
-		
+//		MemoReadBus.count=0;
 		MemoNode.flushDB();
 
 		nofNodes = 10000;
@@ -278,7 +284,7 @@ public class MemoTestServlet extends HttpServlet {
 			}
 		}
 		start = new Date();
-		log(resp,true,"\nPerformance test: Breadth");
+		log(resp,true,"\nPerformance test: Breadth ("+nofNodes+")");
 		
 		startNode = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
@@ -328,6 +334,7 @@ public class MemoTestServlet extends HttpServlet {
 		 * 8
 		*/
 		startNode  = new MemoNode("start");
+		log(resp,true,"Startnode:"+startNode.getId(),"");
 		MemoNode one = new MemoNode("One");
 		startNode.addChild(one);
 		

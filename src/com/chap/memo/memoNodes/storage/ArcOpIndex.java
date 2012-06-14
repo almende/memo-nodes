@@ -19,6 +19,7 @@ public final class ArcOpIndex extends MemoStorable {
 		parents = new HashSet<UUID>(ops.parents.keySet());
 		children = new HashSet<UUID>(ops.children.keySet());
 		shardKey = ops.store("ArcOpShard");
+		
 		this.store("ArcOpIndex");
 	}
 

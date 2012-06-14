@@ -1,7 +1,5 @@
 package com.chap.memo.memoNodes.bus;
 
-import java.util.Date;
-
 import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.chap.memo.memoNodes.storage.ArcOpIndex;
@@ -80,7 +78,7 @@ public class MemoWriteBus {
 	}
 
 	public NodeValue store(UUID id, byte[] value) {
-		long now = new Date().getTime();
+		long now = System.currentTimeMillis();
 		NodeValue result = new NodeValue(id, value, now);
 		values.store(result);
 		MemoReadBus.getBus().lastValueChange = now;
@@ -92,7 +90,7 @@ public class MemoWriteBus {
 
 	public void store(ArcOp op) {
 		ops.store(op);
-		MemoReadBus.getBus().lastOpsChange = new Date().getTime();
+		MemoReadBus.getBus().lastOpsChange = System.currentTimeMillis();
 		if (ops.getCurrentSize() >= ArcOpShard.SHARDSIZE) {
 			flushOps();
 		}

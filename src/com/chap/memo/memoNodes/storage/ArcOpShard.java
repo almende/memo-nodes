@@ -8,11 +8,11 @@ import com.eaio.uuid.UUID;
 
 public final class ArcOpShard extends MemoStorable {
 	private static final long serialVersionUID = 7712775430540649570L;
-	public static final int SHARDSIZE = 30000;
+	public static final int SHARDSIZE = 80000;
 	int currentSize = 0;
 	final HashMap<UUID, ArrayList<ArcOp>> parents = new HashMap<UUID, ArrayList<ArcOp>>(
 			SHARDSIZE);
-	HashMap<UUID, ArrayList<ArcOp>> children = new HashMap<UUID, ArrayList<ArcOp>>(
+	final HashMap<UUID, ArrayList<ArcOp>> children = new HashMap<UUID, ArrayList<ArcOp>>(
 			SHARDSIZE);
 
 	public void store(ArcOp ops) {
@@ -60,10 +60,6 @@ public final class ArcOpShard extends MemoStorable {
 
 	public HashMap<UUID, ArrayList<ArcOp>> getChildren() {
 		return children;
-	}
-
-	public void setChildren(HashMap<UUID, ArrayList<ArcOp>> children) {
-		this.children = children;
 	}
 
 	public HashMap<UUID, ArrayList<ArcOp>> getParents() {

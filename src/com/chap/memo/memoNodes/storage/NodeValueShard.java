@@ -10,7 +10,7 @@ import com.eaio.uuid.UUID;
 
 public final class NodeValueShard extends MemoStorable {
 	private static final long serialVersionUID = 7295820980658238258L;
-	public static final int SHARDSIZE = 50000;
+	public static final int SHARDSIZE = 40000;
 	long oldest = 0;
 	long newest = 0;
 
@@ -85,16 +85,8 @@ public final class NodeValueShard extends MemoStorable {
 		return oldest;
 	}
 
-	public void setOldest(long oldest) {
-		this.oldest = oldest;
-	}
-
 	public long getNewest() {
 		return newest;
-	}
-
-	public void setNewest(long newest) {
-		this.newest = newest;
 	}
 
 	public HashMap<UUID, ArrayList<NodeValue>> getNodes() {
