@@ -13,26 +13,33 @@ import org.msgpack.unpacker.Unpacker;
 import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.eaio.uuid.UUID;
 
-public class NodeValue implements Serializable {
+public class NodeValue implements Serializable,Comparable<NodeValue> {
 
 	private static final long serialVersionUID = 7658842994901044096L;
 	private final UUID id;
 	private final byte[] value;
 	private final long timestamp;
+	public static int knownNodeValues=0;
 
+	protected void finalize(){
+		knownNodeValues--;
+	}
 	public NodeValue(UUID id, byte[] value, long timestamp) {
+		knownNodeValues++;
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp;
 	}
 
 	public NodeValue(UUID id, byte[] value, Date timestamp) {
+		knownNodeValues++;
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp.getTime();
 	}
 
 	public NodeValue(byte[] msg) throws IOException{
+		knownNodeValues++;
 		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
 		ByteArrayInputStream in = new ByteArrayInputStream(msg);
 	    Unpacker unpacker = msgpack.createUnpacker(in);
@@ -65,6 +72,10 @@ public class NodeValue implements Serializable {
 
 	public long getTimestamp_long() {
 		return timestamp;
+	}
+	@Override
+	public int compareTo(NodeValue o) {
+		return timestamp==o.timestamp?0:(timestamp>o.timestamp?1:-1);
 	}
 
 }

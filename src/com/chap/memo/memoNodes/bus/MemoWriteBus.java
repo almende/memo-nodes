@@ -4,6 +4,7 @@ import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.chap.memo.memoNodes.storage.ArcOpIndex;
 import com.chap.memo.memoNodes.storage.ArcOpShard;
+//import com.chap.memo.memoNodes.storage.MemoStorable;
 import com.chap.memo.memoNodes.storage.NodeValueIndex;
 import com.chap.memo.memoNodes.storage.NodeValueShard;
 import com.eaio.uuid.UUID;
@@ -20,10 +21,12 @@ public class MemoWriteBus {
 			.getDatastoreService();
 	NodeValueShard values;
 	ArcOpShard ops;
+	MemoReadBus ReadBus;
 
 	private MemoWriteBus() {
 		values = new NodeValueShard();
 		ops = new ArcOpShard();
+		ReadBus = MemoReadBus.getBus();
 	};
 
 	public static MemoWriteBus getBus() {
@@ -54,45 +57,54 @@ public class MemoWriteBus {
 	public void flush() {
 		flushValues();
 		flushOps();
-		MemoReadBus.getBus().updateIndexes();
+		ReadBus.updateIndexes();
 	}
 
 	public void flushValues() {
 		synchronized (values.getNodes()) {
 			if (values.getNodes().size() > 0) {
 				NodeValueIndex index = new NodeValueIndex(values);
-				MemoReadBus.getBus().addValueIndex(index, values);
+				ReadBus.addValueIndex(index, values);
 				values = new NodeValueShard();
 			}
 		}
+//		System.out.println("ks:"+MemoStorable.knownStorables + ":"+MemoReadBus.NodeValueShards.size()+":"+MemoReadBus.ArcOpShards.size()+":"+ReadBus.NodeValueIndexes.size()+":"+ReadBus.ArcOpIndexes.size()+":"+NodeValue.knownNodeValues+":"+ArcOp.knownOps);
 	}
 
 	public void flushOps() {
 		synchronized (ops) {
 			if (ops.getCurrentSize() > 0) {
+//				long start = System.currentTimeMillis();
 				ArcOpIndex index = new ArcOpIndex(ops);
-				MemoReadBus.getBus().addOpsIndex(index, ops);
+//				long middle = System.currentTimeMillis();
+				ReadBus.addOpsIndex(index, ops);
+//				System.out.println(".:"+(middle-start)+":"+(System.currentTimeMillis()-middle));
 				ops = new ArcOpShard();
 			}
 		}
+		//System.out.println("ks:"+MemoStorable.knownStorables + ":"+MemoReadBus.NodeValueShards.size()+":"+MemoReadBus.ArcOpShards.size()+":"+ReadBus.NodeValueIndexes.size()+":"+ReadBus.ArcOpIndexes.size()+":"+NodeValue.knownNodeValues+":"+ArcOp.knownOps);
 	}
 
 	public NodeValue store(UUID id, byte[] value) {
 		long now = System.currentTimeMillis();
 		NodeValue result = new NodeValue(id, value, now);
 		values.store(result);
-		MemoReadBus.getBus().lastValueChange = now;
-		if (values.getNodes().size() >= NodeValueShard.SHARDSIZE) {
+		ReadBus.lastValueChange = now;
+		if (values.getCurrentSize() >= NodeValueShard.SHARDSIZE) {
+//			long start = System.currentTimeMillis();
 			flushValues();
+//			System.out.println("FlushValues took: "+(System.currentTimeMillis()-start)+" ms");
 		}
 		return result;
 	}
 
 	public void store(ArcOp op) {
 		ops.store(op);
-		MemoReadBus.getBus().lastOpsChange = System.currentTimeMillis();
+		ReadBus.lastOpsChange = System.currentTimeMillis();
 		if (ops.getCurrentSize() >= ArcOpShard.SHARDSIZE) {
+//			long start = System.currentTimeMillis();
 			flushOps();
+//			System.out.println("flushOps took: "+(System.currentTimeMillis()-start)+" ms");
 		}
 	}
 }

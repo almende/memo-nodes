@@ -5,9 +5,8 @@ import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeSet;
-
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.NodeValue;
@@ -30,22 +29,22 @@ import com.google.appengine.api.datastore.QueryResultList;
 public class MemoReadBus {
 	// Shard caches:
 	static Map<UUID, MemoNode> nodeCache = Collections
-			.synchronizedMap(new MyMap<UUID, MemoNode>(100000, new Float(0.75),
+			.synchronizedMap(new MyMap<UUID, MemoNode>(1000, new Float(0.75),
 					true));
 
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
-			.synchronizedMap(new MyMap<Key, NodeValueShard>(5, new Float(0.75),
+			.synchronizedMap(new MyMap<Key, NodeValueShard>(10, new Float(0.75),
 					true));
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
-			.synchronizedMap(new MyMap<Key, ArcOpShard>(15, new Float(0.75),
+			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(0.75),
 					true));
 
-	TreeSet<NodeValueIndex> NodeValueIndexes = new TreeSet<NodeValueIndex>();
-	TreeSet<ArcOpIndex> ArcOpIndexes = new TreeSet<ArcOpIndex>();
+	public ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>();
+	public ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>();
 	
 	DatastoreService datastore = null;
-	long lastValueChange = new Date().getTime();
-	long lastOpsChange = new Date().getTime();
+	long lastValueChange = System.currentTimeMillis();
+	long lastOpsChange = System.currentTimeMillis();
 	long lastIndexesRun = 0;
 
 	private final static MemoReadBus bus = new MemoReadBus();
@@ -64,7 +63,7 @@ public class MemoReadBus {
 			lastValueChange = System.currentTimeMillis();
 			lastOpsChange = System.currentTimeMillis();
 		}
-		Query q = new Query("NodeValueIndex").addSort("timestamp");
+		Query q = new Query("NodeValueIndex").addSort("timestamp",Query.SortDirection.DESCENDING);
 		if (sinceTimestamp > 0) {
 			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL,
 					sinceTimestamp);
@@ -97,6 +96,7 @@ public class MemoReadBus {
 	}
 
 	void addValueIndex(NodeValueIndex index, NodeValueShard shard) {
+//		System.out.println("adding index to NodeValueIndexes");
 		NodeValueShards.put(index.getShardKey(), shard);
 		NodeValueIndexes.add(index);
 		lastValueChange = System.currentTimeMillis();
@@ -125,13 +125,13 @@ public class MemoReadBus {
 	}
 
 	public MemoNode find(UUID uuid) {
-		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
+//		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
 		NodeValue value = getValue(uuid);
 		if (value != null) {
 			MemoNode node = new MemoNode(value);
-			if (value.getValue().length < 10000){
-				nodeCache.put(node.getId(),node);
-			}
+//			if (value.getValue().length < 10000){
+//				nodeCache.put(node.getId(),node);
+//			}
 			return node;
 		}
 		return null;
@@ -149,8 +149,9 @@ public class MemoReadBus {
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(100);
 		if (NodeValueIndexes.size() <= 0)
 			return result;
-		NodeValueIndex index = NodeValueIndexes.last();
-		while (index != null) {
+		Iterator<NodeValueIndex> iter = NodeValueIndexes.iterator();
+		while (iter.hasNext()) {
+			NodeValueIndex index= iter.next();
 			if (index.getNodeIds().contains(uuid)) {
 				NodeValueShard shard = null;
 				synchronized (NodeValueShards) {
@@ -170,7 +171,6 @@ public class MemoReadBus {
 					result.add(new MemoNode(nv));
 				}
 			}
-			index = NodeValueIndexes.lower(index);
 		}
 		Collections.sort(result);
 		return result;
@@ -188,29 +188,30 @@ public class MemoReadBus {
 
 		if (NodeValueIndexes.size() == 0)
 			return result;
-		NodeValueIndex index = NodeValueIndexes.last();
-		while (index != null
-				&& (result == null || index.getNewest() > result.getTimestamp_long())) {
-			if (index.getOldest() < timestamp && index.getNodeIds().contains(uuid)) {
-				NodeValueShard shard = null;
-				synchronized (NodeValueShards) {
-					if (NodeValueShards.containsKey(index.getShardKey())) {
-						shard = NodeValueShards.get(index.getShardKey());
-					}
-				}
-				if (shard == null) {
-					shard = (NodeValueShard) MemoStorable.load(index.getShardKey());
+		Iterator<NodeValueIndex> iter = NodeValueIndexes.iterator();
+		while (iter.hasNext()) {
+			NodeValueIndex index = iter.next();
+			if (result == null || index.getNewest() > result.getTimestamp_long()) {
+				if (index.getOldest() < timestamp && index.getNodeIds().contains(uuid)) {
+					NodeValueShard shard = null;
 					synchronized (NodeValueShards) {
-						NodeValueShards.put(shard.getMyKey(), shard);		
+						if (NodeValueShards.containsKey(index.getShardKey())) {
+							shard = NodeValueShards.get(index.getShardKey());
+						}
 					}
-				}
-				NodeValue res = shard.findBefore(uuid, timestamp);
-				if (result == null
+					if (shard == null) {
+						shard = (NodeValueShard) MemoStorable.load(index.getShardKey());
+						synchronized (NodeValueShards) {
+							NodeValueShards.put(shard.getMyKey(), shard);		
+						}
+					}
+					NodeValue res = shard.findBefore(uuid, timestamp);
+					if (result == null
 						|| res.getTimestamp_long() > result.getTimestamp_long()) {
-					result = res;
+						result = res;
+					}
 				}
 			}
-			index = NodeValueIndexes.lower(index);
 		}
 		return result;
 	}
@@ -218,15 +219,13 @@ public class MemoReadBus {
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long since) {
 		return getOps(uuid, type, System.currentTimeMillis(),since);
 	}
-//	public static int count=0;
 	public ArrayList<ArcOp> getOps(UUID uuid, int type, long timestamp, long since) {
-//		long start = System.currentTimeMillis();
 		ArrayList<ArcOp> result = new ArrayList<ArcOp>(10);
-		if (ArcOpIndexes.size() > 0 && ArcOpIndexes.last().getStoreTime() >= since) {
-			ArcOpIndex index = ArcOpIndexes.first();
-			while (index != null) {
+		if (ArcOpIndexes.size() > 0 && ArcOpIndexes.get(ArcOpIndexes.size()-1).getStoreTime() >= since) {
+			Iterator<ArcOpIndex> iter = ArcOpIndexes.iterator();
+			while (iter.hasNext()) {
+				ArcOpIndex index = iter.next();
 				if (index.getStoreTime() < since){
-					index = ArcOpIndexes.higher(index);
 					continue;
 				}
 				switch (type) {
@@ -282,7 +281,6 @@ public class MemoReadBus {
 					}
 					break;
 				}
-				index = ArcOpIndexes.higher(index);
 			}
 		}
 //		long half = System.currentTimeMillis();

@@ -449,37 +449,32 @@ public class MemoNode implements Comparable<MemoNode> {
 		return result;
 	}
 	/**
-	 * Remove this node.(=setting its value to null and removing all arcs) This method can delete
+	 * Remove this node.(=setting its value to null and removing all arcs) This method will delete
 	 * entire subgraphs through setting the provided flag to true. Removing large subgraphs can be
 	 * an expensive operation.
 	 * 
-	 * @param recursive also remove all children recursively (entire subgraph!)
 	 */
-	public void delete(boolean recursive){
+	public void delete(){
 		MemoNode current = this;
-		if (!recursive) {
-			current.update((byte[])null);
-			current.parents.clear();
-			current.children.clear();
-			return;
-		}
-//		System.out.println("Recursive delete called: "+ existingNodes);
-		/*
-		 * Below is a Heap-based implementation of the recursive deletion algorithm.
-		 */
-		ArrayList<MemoNode> todo = new ArrayList<MemoNode>(20);
+		ArrayList<UUID> todo = new ArrayList<UUID>(20);
 		while (current != null){
-			ArrayList<MemoNode> children = current.getChildren();
-			todo.ensureCapacity(children.size()+todo.size());
-			todo.addAll(children);
-			current.delete(false);
+			UUID[] children = current.children.getNodesIds();
+			UUID[] parents = current.parents.getNodesIds();
+			current.update((byte[])null);
+			if (children.length>0){
+				todo.ensureCapacity(todo.size()+children.length);
+				todo.addAll(Arrays.asList(children));
+				current.children.clear();
+			}
+			if (parents.length>0){
+				current.parents.clear();
+			}
 			if (todo.size()>0){
-				current = todo.remove(0);
+				current = new MemoNode(todo.remove(0));
 			} else {
 				break;
 			}
 		}
-//		System.out.println("Recursive delete finished: "+ existingNodes);
 	}
 	/**
 	 * Convenience method to store a property pattern for this node. This method

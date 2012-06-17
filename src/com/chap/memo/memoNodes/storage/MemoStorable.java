@@ -34,9 +34,16 @@ public abstract class MemoStorable implements Serializable,
 	long storeTime;
 	long nanoTime;
 
+	public static int knownStorables=0;
+	public MemoStorable(){
+		knownStorables++;
+	}
+	protected void finalize(){
+		knownStorables--;
+	}
 	private byte[] serialize() {
 		byte[] result = null;
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ByteArrayOutputStream bos = new ByteArrayOutputStream(5000);
 		ZipOutputStream zos = new ZipOutputStream(bos);
 		try {
 			// zos.setLevel(4);
@@ -89,6 +96,7 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public Key store(Key orig, String type, long storeDate) {
+//		long start = System.currentTimeMillis();
 		final int MAXSIZE = 1000000;
 		Entity ent;
 		Key next = null;
@@ -98,6 +106,7 @@ public abstract class MemoStorable implements Serializable,
 		byte[] data = this.serialize();
 		int length = data.length;
 		int pointer = 0;
+//		int counter = 0;
 		while (length - pointer >= MAXSIZE) {
 			// Expensive, should not be used too much!
 			ent = new Entity(type + "_fragment");
@@ -108,6 +117,7 @@ public abstract class MemoStorable implements Serializable,
 			if (next != null)
 				ent.setUnindexedProperty("next", next);
 			datastore.put(ent);
+//			counter++;
 			next = ent.getKey();
 			pointer += MAXSIZE;
 		}
@@ -123,24 +133,28 @@ public abstract class MemoStorable implements Serializable,
 			ent.setUnindexedProperty("next", next);
 		ent.setProperty("timestamp", this.storeTime);
 		datastore.put(ent);
+//		counter++;
 		myKey = ent.getKey();
 		// Try to force index writing
 		try {
 			datastore.get(myKey);
 		} catch (EntityNotFoundException e) {
 		}
+		//System.out.println("Just stored shard of "+length+ " bytes in "+counter+" fragments  in "+(System.currentTimeMillis()-start)+" ms");
 		return myKey;
 	}
 
 	// Factory methods:
 	public static MemoStorable load(Entity ent) {
+//		long start = System.currentTimeMillis();
 		byte[] result;
 		Key key = ent.getKey();
+//		int count=0;
 		try {
 			Blob blob = (Blob) ent.getProperty("payload");
 			byte[] data = blob.getBytes();
 			result = Arrays.copyOf(data, data.length);
-
+//			count++;
 			while (ent.hasProperty("next")) {
 				// Expensive, should not be used too much!
 				Key next = (Key) ent.getProperty("next");
@@ -148,7 +162,7 @@ public abstract class MemoStorable implements Serializable,
 				blob = (Blob) ent.getProperty("payload");
 				data = blob.getBytes();
 				result = concat(data, result); // Add to front of result, due to
-												// the storing order
+//				count++;						// the storing order
 			}
 
 		} catch (EntityNotFoundException e) {
@@ -156,6 +170,7 @@ public abstract class MemoStorable implements Serializable,
 			return null;
 		}
 		MemoStorable res = _unserialize(result);
+		//System.out.println("Just read shard of "+result.length+" bytes from "+count+ " fragments in "+(System.currentTimeMillis()-start)+" ms");
 		res.myKey = key;
 		return res;
 

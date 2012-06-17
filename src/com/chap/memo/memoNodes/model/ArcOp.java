@@ -16,43 +16,66 @@ import com.eaio.uuid.UUID;
 public class ArcOp implements Serializable, Comparable<ArcOp> {
 	private static final long serialVersionUID = 3848738698324348856L;
 	protected final OpsType type;
-	protected final UUID[] arc;
+	protected final long uuid10;
+	protected final long uuid11;
+	protected final long uuid20;
+	protected final long uuid21;
 	protected final long timestamp;
 
+	public static int knownOps =0;
+	protected void finalize(){
+		knownOps--;
+	}
 	ArcOp(OpsType type, UUID[] arc, long timestamp) {
+		knownOps++;
 		this.type = type;
-		this.arc = arc;
+		this.uuid10 = arc[0].time;
+		this.uuid11 = arc[0].clockSeqAndNode;
+		this.uuid20 = arc[1].time;
+		this.uuid21 = arc[1].clockSeqAndNode;
 		this.timestamp = timestamp;
 	}
 
 	ArcOp(OpsType type, UUID[] arc, Date timestamp) {
+		knownOps++;
 		this.type = type;
-		this.arc = arc;
+		this.uuid10 = arc[0].time;
+		this.uuid11 = arc[0].clockSeqAndNode;
+		this.uuid20 = arc[1].time;
+		this.uuid21 = arc[1].clockSeqAndNode;
 		this.timestamp = timestamp.getTime();
 	}
 
 	ArcOp(OpsType type, UUID parent, UUID child, long timestamp) {
+		knownOps++;
 		this.type = type;
-		this.arc = new UUID[2];
-		this.arc[0] = parent;
-		this.arc[1] = child;
+		this.uuid10 = parent.time;
+		this.uuid11 = parent.clockSeqAndNode;
+		this.uuid20 = child.time;
+		this.uuid21 = child.clockSeqAndNode;
 		this.timestamp = timestamp;
 	}
 
 	ArcOp(OpsType type, UUID parent, UUID child, Date timestamp) {
+		knownOps++;
 		this.type = type;
-		this.arc = new UUID[2];
-		this.arc[0] = parent;
-		this.arc[1] = child;
+		this.uuid10 = parent.time;
+		this.uuid11 = parent.clockSeqAndNode;
+		this.uuid20 = child.time;
+		this.uuid21 = child.clockSeqAndNode;
 		this.timestamp = timestamp.getTime();
 	}
 	
 	public ArcOp(byte[] msg) throws IOException{
+		knownOps++;
 		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
 		ByteArrayInputStream in = new ByteArrayInputStream(msg);
 	    Unpacker unpacker = msgpack.createUnpacker(in);
     	this.type = unpacker.read(OpsType.class);
-		this.arc = unpacker.read(UUID[].class);
+    	this.uuid10 = unpacker.read(long.class);
+    	this.uuid11 = unpacker.read(long.class);
+    	this.uuid20 = unpacker.read(long.class);
+    	this.uuid21 = unpacker.read(long.class);
 		this.timestamp = unpacker.read(long.class);
     }
 	
@@ -61,7 +84,10 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		Packer packer = msgpack.createPacker(out);
 		packer.write(this.type);//Will this work correctly for enums?
-		packer.write(this.arc);
+		packer.write(this.uuid10);
+		packer.write(this.uuid11);
+		packer.write(this.uuid20);
+		packer.write(this.uuid21);
 		packer.write(this.timestamp);
 		return out.toByteArray();
 	}
@@ -70,15 +96,23 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 
 	public UUID get(int type) {
-		return arc[type];
+		switch (type){
+		case 0: 
+			return new UUID(uuid10,uuid11);
+		case 1:
+			return new UUID(uuid20,uuid21);
+		default:
+			System.out.println("Error: unknown ArcOp type given:"+type);
+		}
+		return null;
 	}
 
 	public UUID getParent() {
-		return arc[0];
+		return new UUID(uuid10,uuid11);
 	}
 
 	public UUID getChild() {
-		return arc[1];
+		return new UUID(uuid20,uuid21);
 	}
 
 	public Date getTimestamp() {
@@ -96,7 +130,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 
 	@Override
 	public String toString() {
-		return "[" + this.type + "] " + this.arc[0] + ":" + this.arc[1] + " @"
+		return "[" + this.type + "] " + getParent() + ":" + getChild() + " @"
 				+ this.timestamp;
 	}
 }

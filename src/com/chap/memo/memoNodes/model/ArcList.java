@@ -23,7 +23,7 @@ public class ArcList {
 	private boolean isProxy = false;
 	long lastUpdate = 0;
 
-	UUID[] nodes = new UUID[0];
+	//UUID[] nodes = new UUID[0];
 	ArrayList<ArcOp> arcops = null;
 	
 	int type; // 0: parent list, 1:child list
@@ -69,11 +69,10 @@ public class ArcList {
 		return this.timestamp;
 	}
 
-	public void update(){
+	public UUID[] update(){
 		if (isProxy){
 			//TODO: Check for changed values
 			this.arcops = proxyBus.getOps(nodeId, type, 0);
-			ops2nodes();
 		} else {
 			if (this.arcops == null || readBus.opsChanged(lastUpdate)) {
 				if (this.arcops == null){
@@ -81,10 +80,10 @@ public class ArcList {
 				} else {
 					this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
 				}
-				ops2nodes();
 				lastUpdate = System.currentTimeMillis();
 			}			
 		}
+		return ops2nodes();
 	}
 	
 	public ArrayList<MemoNode> getNodes(long timestamp) {
@@ -97,9 +96,9 @@ public class ArcList {
 				this.arcops.addAll(readBus.getOps(nodeId, type, timestamp,lastUpdate));
 			}
 		}
-		ops2nodes();
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.nodes.length);
-		for (UUID id : this.nodes) {
+		UUID[] nodes = ops2nodes();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(nodes.length);
+		for (UUID id : nodes) {
 			if (proxyBus.isProxy(id)){
 				result.add(proxyBus.find(id));
 			} else {
@@ -109,18 +108,21 @@ public class ArcList {
 		return result;
 	}
 
+	public UUID[] getNodesIds() {
+		return update();
+	}
+
 	public ArrayList<MemoNode> getNodes() {
-		update();
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(this.nodes.length);
-		for (UUID id : this.nodes) {
+		UUID[] nodes = update();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(nodes.length);
+		for (UUID id : nodes) {
 			result.add(new MemoNode(id));
 		}
 		return result;
 	}
 
 	public int getLength() {
-		update();
-		return this.nodes.length;
+		return update().length;
 	}
 
 	public void addNode(UUID other) {
@@ -139,7 +141,7 @@ public class ArcList {
 		}
 		arcops.add(op);
 	}
-
+	
 	public void delNode(UUID other) {
 		if (this.arcops == null){ //small performance gain
 			update();
@@ -158,13 +160,14 @@ public class ArcList {
 	}
 
 	public void clear() {
-		update();
-		for (UUID other : this.nodes) {
+		UUID[] nodes = update();
+		arcops.ensureCapacity(arcops.size()+nodes.length);
+		for (UUID other : nodes) {
 			this.delNode(other);
 		}
 	}
 
-	private void ops2nodes() {
+	private UUID[] ops2nodes() {
 		if (arcops == null ) arcops = new ArrayList<ArcOp>(10); 
 		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
 		for (ArcOp op : arcops) {
@@ -180,6 +183,6 @@ public class ArcList {
 		if (arcops.size() > 0) {
 			this.timestamp = arcops.get(arcops.size() - 1).getTimestamp_long();
 		}
-		this.nodes = nodeList.toArray(new UUID[0]);
+		return nodeList.toArray(new UUID[0]);
 	}
 }

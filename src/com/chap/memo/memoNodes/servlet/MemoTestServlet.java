@@ -12,7 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.bus.MemoProxyBus;
-import com.chap.memo.memoNodes.bus.MemoReadBus;
+//import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.model.NodeValue;
 
 @SuppressWarnings("serial")
@@ -22,6 +22,7 @@ public class MemoTestServlet extends HttpServlet {
 	private void log(HttpServletResponse resp, boolean ok, String shortMsg){
 		log(resp,ok,shortMsg,null);
 	}
+
 	private void log(HttpServletResponse resp, boolean ok, String shortMsg, String msg){
 		try {
 			resp.getWriter().println((ok?"---":"!E!")+"  -   "+shortMsg + (!debug||msg==null?"":msg));
@@ -215,12 +216,13 @@ public class MemoTestServlet extends HttpServlet {
 				
 		log(resp,true,"\nTrying to recursively delete nodes:");
 		
-		first.delete(true);
+		first.delete();
 		log(resp,first.getChildren().size()==0,"First has no children",":"+first.getChildren().size());
 		log(resp,second.getChildren().size()==0,"Second has no children",":"+first.getChildren().size());
 		log(resp,third.getChildren().size()==0,"Third has no children",":"+first.getChildren().size());
 		log(resp,third.getParents().size()==0,"Third has no parents",":"+first.getParents().size());
 		
+		MemoNode node;
 		
 		int nofNodes = 10000;
 		String sNofNodes = req.getParameter("nofNodes");
@@ -234,8 +236,7 @@ public class MemoTestServlet extends HttpServlet {
 		Date start = new Date();
 		log(resp,true,"\nPerformance test: Depth ("+nofNodes+")");
 
-//		MemoReadBus.count=0;
-		MemoNode node = new MemoNode("start");
+		node = new MemoNode("start");
 		for (int i = 0; i< nofNodes; i++) {
 			MemoNode newNode = new MemoNode(new Integer(i).toString());
 			node.addParent(newNode.getId());
@@ -244,7 +245,6 @@ public class MemoTestServlet extends HttpServlet {
 		Date time = new Date();
 		log(resp,true,"Storing done in: "+(time.getTime() - start.getTime())+" ms");
 		
-//		MemoReadBus.count=0;
 		MemoNode startNode = node;
 		
 		int count = 0;
@@ -264,53 +264,51 @@ public class MemoTestServlet extends HttpServlet {
 				count + " children counted in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 
-//		MemoReadBus.count=0;
 		time = new Date();
-		startNode.delete(true);
+		startNode.delete();
 		log(resp,true,
 				" Nodes deleted again in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
 		
-//		MemoReadBus.count=0;
 		MemoNode.flushDB();
-
-		nofNodes = 10000;
-		sNofNodes = req.getParameter("nofArcs");
-		if (sNofNodes != null){
+	
+		
+		int nofArcs = 10000;
+		String snofArcs = req.getParameter("nofArcs");
+		if (snofArcs != null){
 			try {
-				nofNodes=Integer.parseInt(sNofNodes);
+				nofArcs=Integer.parseInt(snofArcs);
 			} catch (Exception e){
-				System.out.println("couldn't parse nofArcs="+sNofNodes);
+				System.out.println("couldn't parse nofArcs="+snofArcs);
 			}
 		}
-		start = new Date();
-		log(resp,true,"\nPerformance test: Breadth ("+nofNodes+")");
+		long arcStart = System.currentTimeMillis();
+		log(resp,true,"\nPerformance test: Breadth ("+nofArcs+")");
 		
-		startNode = new MemoNode("start");
-		for (int i = 0; i< nofNodes; i++) {
+		MemoNode AstartNode = new MemoNode("start");
+		for (int i = 0; i< nofArcs; i++) {
 			MemoNode newNode = new MemoNode(new Integer(i).toString());
-			startNode.addChild(newNode);
+			AstartNode.addChild(newNode);
 		}
-		time = new Date();
-		log(resp,true,"Storing done in: "+(time.getTime() - start.getTime())+" ms");
+		long atime = System.currentTimeMillis();
+		log(resp,true,"Storing done in: "+(atime - arcStart)+" ms");
 
-		count = 0;
-		Iterator<MemoNode> iter = startNode.getChildren().iterator();
-		// node = Node.find("start");
+		int acount = 0;
+		Iterator<MemoNode> iter = AstartNode.getChildren().iterator();
 		while (iter.hasNext()) {
 			node = iter.next();
 			//String value = node.getStringValue();
-			count++;
+			acount++;
 		}
-		log(resp,(count==nofNodes),
-				count + " children counted in:"
-						+ (new Date().getTime() - time.getTime()) + " ms");
+		log(resp,(acount==nofArcs),
+				acount + " children counted in:"
+						+ (System.currentTimeMillis() - atime ) + " ms");
 
-		time = new Date();
-		startNode.delete(true);
+		atime = System.currentTimeMillis();
+		AstartNode.delete();
 		log(resp,true,
 				" Nodes deleted again in:"
-						+ (new Date().getTime() - time.getTime()) + " ms");
+						+ (System.currentTimeMillis() - atime) + " ms");
 		
 		
 		MemoNode.flushDB();
@@ -440,7 +438,7 @@ public class MemoTestServlet extends HttpServlet {
 						+ " ms");
 
 		
-		one.delete(true);
+		one.delete();
 		result = startNode.search(algorithm, 2,arguments); // topx = 2
 		if (debug){
 			for (MemoNode res : result) {

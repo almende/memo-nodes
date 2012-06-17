@@ -6,11 +6,11 @@
 	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-logging.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/ezmorph-1.0.6.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-beanutils.jar"/>
-	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-collections3.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/msgpack-0.6.7-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="war/WEB-INF/lib/javassist.jar"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/commons-collections-4.0-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>
