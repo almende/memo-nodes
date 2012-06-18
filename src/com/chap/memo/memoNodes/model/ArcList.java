@@ -100,9 +100,9 @@ public class ArcList {
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(nodes.length);
 		for (UUID id : nodes) {
 			if (proxyBus.isProxy(id)){
-				result.add(proxyBus.find(id));
+				result.add(proxyBus.find(id,timestamp));
 			} else {
-				result.add(readBus.find(id));
+				result.add(readBus.find(id,timestamp));
 			}
 		}
 		return result;

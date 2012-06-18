@@ -15,7 +15,7 @@ public final class ArcOpIndex extends MemoStorable {
 
 	ArcOpIndex() {
 	}
-
+	
 	//Deep copy constructor
 	public ArcOpIndex(ArcOpShard ops) {
 		parents = new HashSet<UUID>(ops.parents.keySet().size());

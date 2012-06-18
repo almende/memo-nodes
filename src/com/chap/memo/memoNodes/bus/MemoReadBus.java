@@ -27,11 +27,6 @@ import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.QueryResultList;
 
 public class MemoReadBus {
-	// Shard caches:
-	static MyMap<UUID, MemoNode> innerMap_nodeCache = new MyMap<UUID, MemoNode>(1000, new Float(0.75),
-			true);
-	static Map<UUID, MemoNode> nodeCache = Collections.synchronizedMap(innerMap_nodeCache);
-
 	static MyMap<Key, NodeValueShard> innerMap_NodeValueShards = new MyMap<Key, NodeValueShard>(10, new Float(0.75),
 			true);
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
@@ -42,8 +37,8 @@ public class MemoReadBus {
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
 			.synchronizedMap(innerMap_ArcOpShards);
 
-	public ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>();
-	public ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>();
+	public ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>(100);
+	public ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(100);
 	
 	DatastoreService datastore = null;
 	long lastValueChange = System.currentTimeMillis();
@@ -53,7 +48,6 @@ public class MemoReadBus {
 	private final static MemoReadBus bus = new MemoReadBus();
 
 	MemoReadBus() {
-		innerMap_nodeCache.synchronization_anchor=nodeCache;
 		innerMap_NodeValueShards.synchronization_anchor=NodeValueShards;
 		innerMap_ArcOpShards.synchronization_anchor=ArcOpShards;
 		loadIndexes(false, 0);
@@ -70,6 +64,8 @@ public class MemoReadBus {
 		if (clear) {
 			NodeValueIndexes.clear();
 			ArcOpIndexes.clear();
+			NodeValueShards.clear();
+			ArcOpShards.clear();
 			lastValueChange = System.currentTimeMillis();
 			lastOpsChange = System.currentTimeMillis();
 		}
@@ -135,14 +131,9 @@ public class MemoReadBus {
 	}
 
 	public MemoNode find(UUID uuid) {
-		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
 		NodeValue value = getValue(uuid);
 		if (value != null) {
-			MemoNode node = new MemoNode(value);
-			if (value.getValue().length < 10000){
-				nodeCache.put(node.getId(),node);
-			}
-			return node;
+			return new MemoNode(value);
 		}
 		return null;
 	}
