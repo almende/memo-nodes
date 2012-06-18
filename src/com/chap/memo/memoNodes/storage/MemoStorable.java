@@ -34,13 +34,6 @@ public abstract class MemoStorable implements Serializable,
 	long storeTime;
 	long nanoTime;
 
-	public static int knownStorables=0;
-	public MemoStorable(){
-		knownStorables++;
-	}
-	protected void finalize(){
-		knownStorables--;
-	}
 	private byte[] serialize() {
 		byte[] result = null;
 		ByteArrayOutputStream bos = new ByteArrayOutputStream(5000);

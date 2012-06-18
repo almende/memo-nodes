@@ -269,10 +269,13 @@ public class MemoTestServlet extends HttpServlet {
 		log(resp,true,
 				" Nodes deleted again in:"
 						+ (new Date().getTime() - time.getTime()) + " ms");
+		time = new Date();
 		
 		MemoNode.flushDB();
 	
-		
+		log(resp,true,
+				" Db flushed:"
+						+ (new Date().getTime() - time.getTime()) + " ms");
 		int nofArcs = 10000;
 		String snofArcs = req.getParameter("nofArcs");
 		if (snofArcs != null){
@@ -311,8 +314,13 @@ public class MemoTestServlet extends HttpServlet {
 						+ (System.currentTimeMillis() - atime) + " ms");
 		
 		
-		MemoNode.flushDB();
+		time = new Date();
 		
+		MemoNode.flushDB();
+	
+		log(resp,true,
+				" Db flushed:"
+						+ (new Date().getTime() - time.getTime()) + " ms");
 		start = new Date();
 
 		log(resp,true,"\nPattern search test:");

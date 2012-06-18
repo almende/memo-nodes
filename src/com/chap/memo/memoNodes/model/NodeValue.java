@@ -19,27 +19,20 @@ public class NodeValue implements Serializable,Comparable<NodeValue> {
 	private final UUID id;
 	private final byte[] value;
 	private final long timestamp;
-	public static int knownNodeValues=0;
 
-	protected void finalize(){
-		knownNodeValues--;
-	}
 	public NodeValue(UUID id, byte[] value, long timestamp) {
-		knownNodeValues++;
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp;
 	}
 
 	public NodeValue(UUID id, byte[] value, Date timestamp) {
-		knownNodeValues++;
 		this.id = id;
 		this.value = value;
 		this.timestamp = timestamp.getTime();
 	}
 
 	public NodeValue(byte[] msg) throws IOException{
-		knownNodeValues++;
 		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
 		ByteArrayInputStream in = new ByteArrayInputStream(msg);
 	    Unpacker unpacker = msgpack.createUnpacker(in);

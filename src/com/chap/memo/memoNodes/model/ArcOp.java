@@ -22,12 +22,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	protected final long uuid21;
 	protected final long timestamp;
 
-	public static int knownOps =0;
-	protected void finalize(){
-		knownOps--;
-	}
 	ArcOp(OpsType type, UUID[] arc, long timestamp) {
-		knownOps++;
 		this.type = type;
 		this.uuid10 = arc[0].time;
 		this.uuid11 = arc[0].clockSeqAndNode;
@@ -37,7 +32,6 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 
 	ArcOp(OpsType type, UUID[] arc, Date timestamp) {
-		knownOps++;
 		this.type = type;
 		this.uuid10 = arc[0].time;
 		this.uuid11 = arc[0].clockSeqAndNode;
@@ -47,7 +41,6 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 
 	ArcOp(OpsType type, UUID parent, UUID child, long timestamp) {
-		knownOps++;
 		this.type = type;
 		this.uuid10 = parent.time;
 		this.uuid11 = parent.clockSeqAndNode;
@@ -57,7 +50,6 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 
 	ArcOp(OpsType type, UUID parent, UUID child, Date timestamp) {
-		knownOps++;
 		this.type = type;
 		this.uuid10 = parent.time;
 		this.uuid11 = parent.clockSeqAndNode;
@@ -67,7 +59,6 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 	
 	public ArcOp(byte[] msg) throws IOException{
-		knownOps++;
 		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
 		ByteArrayInputStream in = new ByteArrayInputStream(msg);
 	    Unpacker unpacker = msgpack.createUnpacker(in);

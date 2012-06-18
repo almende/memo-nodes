@@ -169,7 +169,7 @@ public class ArcList {
 
 	private UUID[] ops2nodes() {
 		if (arcops == null ) arcops = new ArrayList<ArcOp>(10); 
-		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size());
+		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size()/2);
 		for (ArcOp op : arcops) {
 			switch (op.getType()) {
 			case ADD:

@@ -28,16 +28,19 @@ import com.google.appengine.api.datastore.QueryResultList;
 
 public class MemoReadBus {
 	// Shard caches:
-	static Map<UUID, MemoNode> nodeCache = Collections
-			.synchronizedMap(new MyMap<UUID, MemoNode>(1000, new Float(0.75),
-					true));
+	static MyMap<UUID, MemoNode> innerMap_nodeCache = new MyMap<UUID, MemoNode>(1000, new Float(0.75),
+			true);
+	static Map<UUID, MemoNode> nodeCache = Collections.synchronizedMap(innerMap_nodeCache);
 
+	static MyMap<Key, NodeValueShard> innerMap_NodeValueShards = new MyMap<Key, NodeValueShard>(10, new Float(0.75),
+			true);
 	static Map<Key, NodeValueShard> NodeValueShards = Collections
-			.synchronizedMap(new MyMap<Key, NodeValueShard>(10, new Float(0.75),
-					true));
+			.synchronizedMap(innerMap_NodeValueShards);
+	
+	static MyMap<Key, ArcOpShard> innerMap_ArcOpShards = new MyMap<Key, ArcOpShard>(10, new Float(0.75),
+			true);
 	static Map<Key, ArcOpShard> ArcOpShards = Collections
-			.synchronizedMap(new MyMap<Key, ArcOpShard>(10, new Float(0.75),
-					true));
+			.synchronizedMap(innerMap_ArcOpShards);
 
 	public ArrayList<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>();
 	public ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>();
@@ -49,6 +52,13 @@ public class MemoReadBus {
 
 	private final static MemoReadBus bus = new MemoReadBus();
 
+	MemoReadBus() {
+		innerMap_nodeCache.synchronization_anchor=nodeCache;
+		innerMap_NodeValueShards.synchronization_anchor=NodeValueShards;
+		innerMap_ArcOpShards.synchronization_anchor=ArcOpShards;
+		loadIndexes(false, 0);
+	};
+	
 	void updateIndexes() {
 		loadIndexes(false, lastIndexesRun - 10000);
 	}
@@ -97,20 +107,20 @@ public class MemoReadBus {
 
 	void addValueIndex(NodeValueIndex index, NodeValueShard shard) {
 //		System.out.println("adding index to NodeValueIndexes");
-		NodeValueShards.put(index.getShardKey(), shard);
+		synchronized (NodeValueShards) {
+			NodeValueShards.put(index.getShardKey(), shard);
+		}
 		NodeValueIndexes.add(index);
 		lastValueChange = System.currentTimeMillis();
 	}
 
 	void addOpsIndex(ArcOpIndex index, ArcOpShard shard) {
-		ArcOpShards.put(index.getShardKey(), shard);
+		synchronized (ArcOpShards) {
+			ArcOpShards.put(index.getShardKey(), shard);
+		}
 		ArcOpIndexes.add(index);
 		lastOpsChange = System.currentTimeMillis();
 	}
-
-	MemoReadBus() {
-		loadIndexes(false, 0);
-	};
 
 	public static MemoReadBus getBus() {
 		return bus;
@@ -125,13 +135,13 @@ public class MemoReadBus {
 	}
 
 	public MemoNode find(UUID uuid) {
-//		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
+		if (nodeCache.containsKey(uuid)) return nodeCache.get(uuid);
 		NodeValue value = getValue(uuid);
 		if (value != null) {
 			MemoNode node = new MemoNode(value);
-//			if (value.getValue().length < 10000){
-//				nodeCache.put(node.getId(),node);
-//			}
+			if (value.getValue().length < 10000){
+				nodeCache.put(node.getId(),node);
+			}
 			return node;
 		}
 		return null;
