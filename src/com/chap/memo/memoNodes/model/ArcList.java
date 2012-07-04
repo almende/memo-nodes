@@ -137,6 +137,7 @@ public class ArcList {
 		if (isProxy){
 			proxyBus.store(op);
 		} else {
+			//TODO: if other is proxy? Expensive!!!
 			writeBus.store(op);	
 		}
 		arcops.add(op);

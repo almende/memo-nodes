@@ -33,14 +33,11 @@ public class MemoWriteBus {
 	}
 
 	public static void emptyDB() {
-		// create one big cleanup query
 		String[] types = { "NodeValueIndex", "ArcOpIndex", "NodeValueShard",
 				"ArcOpShard" };
 		for (String type : types) {
 			Query q = new Query(type).setKeysOnly();
 			PreparedQuery pq = datastore.prepare(q);
-			// int count = pq.countEntities();
-			// System.out.println("Deleting :"+count+" entries of type:"+type);
 			for (Entity res : pq.asIterable()) {
 				datastore.delete(res.getKey());
 				try {
@@ -67,21 +64,16 @@ public class MemoWriteBus {
 				values = new NodeValueShard();
 			}
 		}
-//		System.out.println("ks:"+MemoStorable.knownStorables + ":"+MemoReadBus.NodeValueShards.size()+":"+MemoReadBus.ArcOpShards.size()+":"+ReadBus.NodeValueIndexes.size()+":"+ReadBus.ArcOpIndexes.size()+":"+NodeValue.knownNodeValues+":"+ArcOp.knownOps);
 	}
 
 	public void flushOps() {
 		synchronized (ops) {
 			if (ops.getCurrentSize() > 0) {
-//				long start = System.currentTimeMillis();
 				ArcOpIndex index = new ArcOpIndex(ops);
-//				long middle = System.currentTimeMillis();
 				ReadBus.addOpsIndex(index, ops);
-//				System.out.println(".:"+(middle-start)+":"+(System.currentTimeMillis()-middle));
 				ops = new ArcOpShard();
 			}
 		}
-		//System.out.println("ks:"+MemoStorable.knownStorables + ":"+MemoReadBus.NodeValueShards.size()+":"+MemoReadBus.ArcOpShards.size()+":"+ReadBus.NodeValueIndexes.size()+":"+ReadBus.ArcOpIndexes.size()+":"+NodeValue.knownNodeValues+":"+ArcOp.knownOps);
 	}
 
 	public NodeValue store(UUID id, byte[] value) {
@@ -90,9 +82,7 @@ public class MemoWriteBus {
 		values.store(result);
 		ReadBus.lastValueChange = now;
 		if (values.getCurrentSize() >= NodeValueShard.SHARDSIZE) {
-//			long start = System.currentTimeMillis();
 			flushValues();
-//			System.out.println("FlushValues took: "+(System.currentTimeMillis()-start)+" ms");
 		}
 		return result;
 	}
@@ -101,9 +91,7 @@ public class MemoWriteBus {
 		ops.store(op);
 		ReadBus.lastOpsChange = System.currentTimeMillis();
 		if (ops.getCurrentSize() >= ArcOpShard.SHARDSIZE) {
-//			long start = System.currentTimeMillis();
 			flushOps();
-//			System.out.println("flushOps took: "+(System.currentTimeMillis()-start)+" ms");
 		}
 	}
 }
