@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -28,6 +29,7 @@ import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
 public abstract class MemoStorable implements Serializable,
 		Comparable<MemoStorable> {
 	private static final long serialVersionUID = -5770613002073776843L;
+	protected final static Logger log = Logger.getLogger(MemoStorable.class.getName());
 	static final DatastoreService datastore = DatastoreServiceFactory
 			.getDatastoreService();
 	Key myKey = null;
@@ -54,7 +56,8 @@ public abstract class MemoStorable implements Serializable,
 			zos.close();
 			oos.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.severe("Failed to serialize MemoStorable: "+e.getMessage());
+			log.severe(e.getCause().getMessage());
 		}
 		return result;
 	}
@@ -181,8 +184,8 @@ public abstract class MemoStorable implements Serializable,
 
 	public static ArrayList<MemoStorable> getChanges(String type, Date after) {
 
-		Query q = new Query(type).addFilter("timestamp",
-				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
+		Query q = new Query(type).setFilter(new Query.FilterPredicate("timestamp",
+				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime()));
 		PreparedQuery pq = datastore.prepare(q);
 		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(
 				pq.countEntities(withLimit(1000)));

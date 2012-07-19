@@ -325,11 +325,11 @@ public class MemoTestServlet extends HttpServlet {
 
 		log(resp,true,"\nPattern search test:");
 
-		/*                                        _
-		 *      start                            \ /
-		 *       /  \                PreAmble -- any
-		 *   >--1    2               Pattern  -- 5 -- 8
-		 *   | / \  / \                (three 5's should be matched in the diagram to the left)
+		/*                                                  _
+		 *      start                            	       \ /
+		 *       /  \                PreAmble -- 1 -- 3 -- any
+		 *   >--1    2               Pattern  -- 5 -- *  (*= argument (using 8 and 7 below)
+		 *   | / \  / \                (two 5's should be matched in the diagram to the left)
 		 *   |/   3    4
 		 *   3    | \ / \
 		 *   |    5  5   5
@@ -446,7 +446,7 @@ public class MemoTestServlet extends HttpServlet {
 						+ " ms");
 
 		
-		one.delete();
+	//	one.delete();
 		result = startNode.search(algorithm, 2,arguments); // topx = 2
 		if (debug){
 			for (MemoNode res : result) {

@@ -25,6 +25,8 @@ import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.QueryResultList;
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
 public class MemoReadBus {
 	static MyMap<Key, NodeValueShard> innerMap_NodeValueShards = new MyMap<Key, NodeValueShard>(10, new Float(0.75),
@@ -41,6 +43,7 @@ public class MemoReadBus {
 	public ArrayList<ArcOpIndex> ArcOpIndexes = new ArrayList<ArcOpIndex>(100);
 	
 	DatastoreService datastore = null;
+	MemcacheService memCache = null;
 	long lastValueChange = System.currentTimeMillis();
 	long lastOpsChange = System.currentTimeMillis();
 	long lastIndexesRun = 0;
@@ -58,8 +61,8 @@ public class MemoReadBus {
 	}
 
 	void loadIndexes(boolean clear, long sinceTimestamp) {
-		if (datastore == null){
-			datastore = DatastoreServiceFactory.getDatastoreService();
+		if (memCache == null){
+			memCache = MemcacheServiceFactory.getMemcacheService();
 		}
 		if (clear) {
 			NodeValueIndexes.clear();
@@ -68,11 +71,23 @@ public class MemoReadBus {
 			ArcOpShards.clear();
 			lastValueChange = System.currentTimeMillis();
 			lastOpsChange = System.currentTimeMillis();
+			memCache.delete("memoNodes_lastUpdate");
+		} else {
+			Object lastUpdate = memCache.get("memoNodes_lastUpdate");
+			if (lastUpdate != null){
+				long lastUpdateTime = (Long)lastUpdate;
+				if (lastUpdateTime <= lastIndexesRun){
+					return; //Nothing new to expect;
+				}
+			}
+		}
+		if (datastore == null){
+			datastore = DatastoreServiceFactory.getDatastoreService();
 		}
 		Query q = new Query("NodeValueIndex").addSort("timestamp",Query.SortDirection.DESCENDING);
 		if (sinceTimestamp > 0) {
-			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL,
-					sinceTimestamp);
+			q.setFilter(new Query.FilterPredicate("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL,
+					sinceTimestamp));
 		}
 		PreparedQuery NodeValueIndexQuery = datastore.prepare(q);
 		QueryResultList<Entity> rl = NodeValueIndexQuery
@@ -87,8 +102,8 @@ public class MemoReadBus {
 
 		q = new Query("ArcOpIndex").addSort("timestamp");
 		if (sinceTimestamp > 0) {
-			q.addFilter("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL,
-					sinceTimestamp);
+			q.setFilter(new Query.FilterPredicate("timestamp", FilterOperator.GREATER_THAN_OR_EQUAL,
+					sinceTimestamp));
 		}
 		PreparedQuery ArcOpIndexQuery = datastore.prepare(q);
 		rl = ArcOpIndexQuery.asQueryResultList(withLimit(1000));
@@ -99,6 +114,7 @@ public class MemoReadBus {
 			}
 			lastOpsChange = System.currentTimeMillis();
 		}
+		lastIndexesRun = System.currentTimeMillis();
 	}
 
 	void addValueIndex(NodeValueIndex index, NodeValueShard shard) {
