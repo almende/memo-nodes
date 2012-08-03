@@ -1,0 +1,252 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>MemoNodes - Introduction </title>
+  <link rel="shortcut icon" href="img/logo/favicon.ico" >
+  <link type="text/css" rel="stylesheet" href="css/style.css"> 
+  
+  <meta name="title" content="MemoNodes - Introduction">   
+  <meta name="keywords" content="chap, memo, memory, graph, database, blackboard, data store, agent, software agent, agent platform, cloud, google app engine, http, json, json-rpc, opensource, open source, web-based" >
+  <meta name="description" content="MemoNodes is a generic storage-independent graph database implemented in Java." >
+  <meta name="author" content="Almende B.V." >
+
+</head>
+
+<body>
+
+<a href="https://github.com/almende/memo-nodes" style="position: fixed; top: 0; right: 0; border: 0;" >
+  <img 
+    src="img/forkme_right_darkblue_121621.png" 
+    alt="Fork me on GitHub" >
+</a>
+  
+<div id="container">
+
+<div id="menu">
+<div id="menu-inner">
+
+<a href="http://almende.github.com/memo-nodes"><img src="img/logo/MemoNodes_128.png" alt="logo"></a>
+<br>
+
+<div class="nav">
+<ul>
+  <li>
+    MemoNodes
+    <ul>
+      <li><a class="nav" href="index.html">Introduction</a></li>
+      <li><a class="nav" href="protocol.html">Protocol</a></li>
+    </ul>
+  </li>
+
+  <li>
+    Java
+    <ul>
+      <li><a class="nav" href="overview.html">Overview</a></li>
+      <li><a class="nav" href="gettingstarted.html">Getting Started</a></li>
+      <li><a class="nav" href="examples.html">Examples</a></li>
+    </ul>
+  </li>
+
+</ul>
+</div>
+
+</div>
+</div>
+
+<div id="contents">
+  <h1 id='introduction'>Introduction</h1>
+
+<p>MemoNodes is a general purpose graph-based data storage implemented in Java. It provides a clear, simple and conceptually elegant API, implemented as a java library.</p>
+
+<ul>
+<li>Download it from:&#160;<a href='dist/MemoNodes.tar.gz'>tarball (binary)</a></li>
+
+<li>Sources from:&#160;&#160;&#160;&#160;&#160;&#160;&#160;<a href='dist/MemoNodesFull.tar.gz'>tarball (Eclipse project)</a></li>
+
+<li>GIT repository:&#160;&#160;&#160;&#160;&#160;&#160;<a href='https://github.com/almende/memo-nodes' target='_blank'>Github</a></li>
+
+<li>Javadoc:&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<a href='javadoc/com/chap/memo/memoNodes/MemoNode.html' target='_blank'>com.chap.memo.memoNodes.MemoNode</a></li>
+</ul>
+
+<p>This illustrates the possibility to build simple, efficient, and scalable data stores managed using Platform as a Service (PaaS). MemoNodes supports extensions with additional model abstraction layers for Model Driven Engineering. This can be extended to implement any data storage for web-based applications which need to share data.</p>
+
+<p>The <a href='#chap'>CHAP agent platform</a> uses MemoNodes as its underlying data store for its knowledge base. Even though CHAP uses the existing Google App Engine as implementation, MemoNodes is designed to be platform-independent and can fit other implementations as well.</p>
+
+<p>The core features of MemoNodes are enumerated below:</p>
+
+<ul>
+<li><a href='#javabeans'>Java library implementation using Java Beans-like objects</a></li>
+
+<li><a href='#protocol'>Support exporting data to JSON format for further processing by other CHAP components</a></li>
+
+<li><a href='#multipurpose'>Generic, general purpose, data storage-independent platform, based on a graph representation</a></li>
+
+<li><a href='#opensource'>It is an open-source, modular, open-standards supporting and easy to extend solution</a></li>
+
+<li><a href='#modular'>Easy to install, to set up and to use</a></li>
+
+<li><a href='#multiplatform'>Lightweight, has a very small memory usage</a></li>
+</ul>
+
+<p><a href='img/MemoNodes.png'><img style='margin-top: 30px;' src='img/MemoNodes.png' title='Click for a larger view' /></a></p>
+
+<h2 id='javabeans'>Java library implementation using Java Beans-like objects</h2>
+
+<ul>
+<li>
+<p><strong>Abstraction layer based on Java Beans for implementing Application-specific Business Entities</strong><br />MemoNodes can be used as an abstraction to link different data structures corresponding to the Business Entities of a specific domain. One can abstract away the actual properties and attributes of a Business Entity, and use a uniform CRUD-like interface using REST-principles for invoking domain-specific functions.</p>
+
+<p>This amounts to the fact that MemoNodes implements business logic independently of the data structures.</p>
+</li>
+</ul>
+
+<h2 id='protocol'>Support exporting data to JSON format for further processing by other applications or services/components</h2>
+
+<ul>
+<li><strong>Support for JSON format and JSON-RPC protocol - Great interoperability with web-based applications</strong><br />MemoNodes supports the lightweight JSON data interchange format, very popular human-readable format for web applications. It also supports JSON-RPC, which is a specific RPC-based communication model implementation using JSON.</li>
+</ul>
+
+<h2 id='multipurpose'>Generic, general purpose, data storage-independent platform, based on a graph representation</h2>
+
+<ul>
+<li><strong>Wrapping existing services.</strong><br />Web services can be exposed for applications and software agents by creating a simple &#8220;wrapper class&#8221; as container for several web services. For example a Question service uses the existing generic web services for handling questions and interactions at application level, and makes this information service available for other extensions of communication acts, e.g. <em>ClosedQuestion</em>, <em>MultiChoiceQuestion</em>, <em>FAQQuestion</em>, etc.</li>
+</ul>
+
+<h2 id='opensource'>It is an open-source, modular, open-standards supporting and easy to extend solution</h2>
+
+<p>MemoNodes is open-source. You can download, compile and run its Java source from the <em>MemoNodes URL</em>(#memonodesurl).</p>
+
+<h2 id='modular'>Easy to install, to set up and to use</h2>
+
+<ul>
+<li><strong>Easily set up an agent platform</strong><br />MemoNodes aims to enable quick prototyping and design of domain specific data stores.</li>
+</ul>
+
+<h2 id='multiplatform'>Lightweight, has a very small memory usage</h2>
+
+<p>MemoNodes is a parsimonious implementation of an associative memory, which uses system resources economically. It has therefore good performance and is scalable, and can be used to set up large data stores, where the performance is more stable than in a relational database.</p>
+
+<h2 id='multipurpose'>Multipurpose</h2>
+
+<p>New data structures and instantiations can be built on any type of domain. MemoNodes offers the base to built your own domain.</p>
+
+<h2 id='modular'>Modular set up</h2>
+
+<p>The conceptual structure of MemoNodes has been set up in a modular way. There is one core package, MemoNodes Core, which contains the basic functionallity for handling memory objects, data persistency, and base classes to define and store structured data instances.</p>
+
+<p>On top of this core, other library extensions are built, containing implementations of MemoNodes for different types of storage mechanisms.</p>
+
+<h3 id='memonodes_core'>MemoNodes Core</h3>
+
+<p>MemoNodes Core is the core library of CHAP. It contains the basic functionallity for setting up the domain representation suitable for a scalable multi-agent execution and simulation platform.</p>
+
+<h3 id='memonodes_gae'>MemoNodes GAE</h3>
+
+<p>MemoNodes GAE is a library built on top of MemoNodes core, which offers support for domain-specific applications.</p>
+
+<h2 id='opensource'>Open source</h2>
+
+<p>MemoNodes is an open platform, and it is encouraged to help extending the platform by providing new libraries with agents, or create implementations in other programming languages, or improve existing code. One of the key issues for the platform to be successful is that it needs to be accessible, open, and easy to implement for any developer in any development environment.</p>
+
+<p>Offering the software as open source is a logic result of the aims for openness and collaborative development.</p>
+
+<h2 id='functionality'>Functionality</h2>
+
+<p>MemoNodes displays several design features specific for a temporal associative memory with grouping, filtering and querying features.</p>
+
+<p>It allows dynamic data structures to be formed and transformed using links and dynamic relations similar to what is happening with the neurons of a brain, that encode concepts.</p>
+
+<p>Among the features of MemoNodes, we count:</p>
+
+<ul>
+<li>
+<p>The �cells� of MemoNodes memory are completely immutable Nodes: any change in value and/or Arcs will lead to a new Node creation, but with the same node ID (the old value will become discarded, but still available in the node history).</p>
+</li>
+
+<li>
+<p>Arcs point to Node IDs, all nodes representing the same value (at different times) share the same Node ID.</p>
+</li>
+
+<li>
+<p>Nodes can be added into multiple memory clusters, i.e. groups of nodes sharing similar attributes or grouping criteria</p>
+</li>
+
+<li>
+<p>Nodes are clustered around creation time, which makes retrieval relatively fast in most cases (that is, when the most recent values are retrieved)</p>
+</li>
+
+<li>
+<p>The history of one node can be retrieved by invoking method Node.history()</p>
+</li>
+
+<li>
+<p>The entire graph database (MemoNodes memory) can be reset, i.e. cleared of all nodes (Tabula rasa)</p>
+</li>
+
+<li>
+<p>Memories can be shared by exchanging a Node ID corresponding to a node from which the entire memory sub-graph can be visited.</p>
+</li>
+
+<li>
+<p>The query Language of this graph database is a graph structure pattern matching algorithm which can itself be stored in the graph database, as a subgraph</p>
+</li>
+
+<li>
+<p>The structure of the memory graph is the essence of the associative memory: you can find nodes based on some structural properties they have; this can also be used for temporal patterns</p>
+</li>
+
+<li>
+<p>MemoNodes is a self-modifying storage model: its structure changes over time, allowing updates of its values</p>
+</li>
+</ul>
+
+<p>You can use MemoNodes with very little training on the use of its API, as illustrated below.</p>
+
+<h2 id='example_usage'>Example Usage</h2>
+
+<p>Let&#8217;s exemplify the content of MemoNodes.</p>
+
+<p>MemoNodes stores application data in a graph representation, the most generic of data structures, capable of representing any kind of data in an accessible, simple to comprehend and conceptually elegant manner. The graph contains nodes and directed arcs connecting them, to encode data attributes of elements from an arbitrary domain.</p>
+
+<p>MemoNodes can express state properties, such as:</p>
+
+<ul>
+<li>
+<p>Values of a set of Properties at a given time. (Entity E has property P with value V at time T)</p>
+</li>
+
+<li>
+<p>Existence of Relations at a given time. (Entity E has relation R with a given entity or group of entities G?)</p>
+</li>
+</ul>
+
+<p>Such properties can be encoded in a graph-based representation as shown below.</p>
+
+<p><strong>Memory</strong>: <em>Start</em> (<em>ROOT</em>) / \</p>
+
+<blockquote>
+<p>&#8211;1 2</p>
+</blockquote>
+
+<p>| / \ / \ <br />|/ 3 4 3 | / \ | 5 5 5 6 | | | / \ 8 7 8 5 7 | 8</p>
+
+<p>These properties can be queried against the graph-based representation as shown below.</p>
+
+<p><strong>Query Pattern</strong>: _ <br /> \ / <br /> PreAmble &#8211;&gt; any <br /> Pattern &#8211;&gt; 5 &#8211; 8</p>
+
+<p><strong>Pattern Matching Query Result</strong>: Pattern matches three 5&#8217;s from the graph</p>
+
+<h2 id='references'>References</h2>
+
+<p><span>1</span> <em id='memonodes'>MemoNodes</em> GitHub project - URL: https://github.com/almende/MemoNodes</p>
+
+<p><span>2</span> CHAP GitHub project - URL: https://github.com/almende/chap</p>
+  
+  <div class="lastupdate">
+  Last updated: 03 August 2012
+  </div>
+</div>
+
+</div>
+</body>
+</html>

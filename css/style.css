@@ -48,12 +48,12 @@ body {
 h2 {
   padding-top: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #FACAE6;
-  color: #F0209B;
+  border-bottom: 1px solid #329f60;
+  color: #329f60;
 }
 
 a {
-  color: #F0209B;
+  color: #329f60;
   text-decoration: none;
 }
 a:hover {
@@ -108,7 +108,7 @@ div.nav ul li {
   text-transform: uppercase;
   font-weight: bold;
   font-size: 11pt;
-  color: #F0209B;
+  color: #329f60;
 
   list-style: none;
   margin-top: 5px;  
