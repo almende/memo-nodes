@@ -1,14 +1,13 @@
 package com.chap.memo.memoNodes.storage;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
-
-import org.apache.commons.collections.map.MultiValueMap;
+import java.util.List;
 
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.eaio.uuid.UUID;
+import com.google.common.collect.ArrayListMultimap;
 
 public final class NodeValueShard extends MemoStorable {
 	private static final long serialVersionUID = 7295820980658238258L;
@@ -17,10 +16,10 @@ public final class NodeValueShard extends MemoStorable {
 	long newest = 0;
 	int currentSize = 0;
 	
-	final MultiValueMap<UUID,NodeValue> nodes = new MultiValueMap<UUID,NodeValue>();
+	final ArrayListMultimap<UUID,NodeValue> nodes = ArrayListMultimap.create();
 	
 	
-	public MultiValueMap<UUID, NodeValue> getNodes() {
+	public ArrayListMultimap<UUID, NodeValue> getNodes() {
 		return nodes;
 	}
 	public int getCurrentSize() {
@@ -37,9 +36,8 @@ public final class NodeValueShard extends MemoStorable {
 		currentSize++;
 	}
 
-	@SuppressWarnings("unchecked")
-	public ArrayList<NodeValue> findAll(UUID id) {
-		return (ArrayList<NodeValue>) nodes.get(id);
+	public List<NodeValue> findAll(UUID id) {
+		return nodes.get(id);
 	}
 
 	public NodeValue find(UUID id) {
@@ -54,8 +52,7 @@ public final class NodeValueShard extends MemoStorable {
 		if (timestamp_long < oldest)
 			return null; // shortcut, will probably not be used...
 
-		@SuppressWarnings("unchecked")
-		ArrayList<NodeValue> res = (ArrayList<NodeValue>) nodes.get(id);
+		List<NodeValue> res = nodes.get(id);
 		if (res != null && !res.isEmpty()) {
 			//Reverse direction might be somewhat faster
 			Collections.sort(res);

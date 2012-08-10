@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.model.ArcOp;
@@ -262,7 +263,7 @@ public class MemoReadBus {
 								ArcOpShards.put(shard.getMyKey(), shard);	
 							}
 						}
-						ArrayList<ArcOp> children = shard.getChildOps(uuid);
+						List<ArcOp> children = shard.getChildOps(uuid);
 						result.ensureCapacity(children.size()+1);
 						for (ArcOp op : children) {
 							if (op.getTimestamp_long() <= timestamp) {
@@ -288,7 +289,7 @@ public class MemoReadBus {
 								ArcOpShards.put(shard.getMyKey(), shard);
 							}
 						}
-						ArrayList<ArcOp> parents = shard.getParentOps(uuid);
+						List<ArcOp> parents = shard.getParentOps(uuid);
 						result.ensureCapacity(parents.size()+1);
 						for (ArcOp op : parents) {
 							if (op.getTimestamp_long() <= timestamp) {
@@ -303,7 +304,7 @@ public class MemoReadBus {
 //		long half = System.currentTimeMillis();
 		switch (type) {
 		case 0: // parentList, UUID is child
-			ArrayList<ArcOp> children = MemoWriteBus.getBus().ops.getChildOps(uuid);
+			List<ArcOp> children = MemoWriteBus.getBus().ops.getChildOps(uuid);
 			result.ensureCapacity(result.size()+children.size()+1);
 			for (ArcOp op : children) {
 				if (op.getTimestamp_long() <= timestamp && op.getTimestamp_long() >= since) {
@@ -312,7 +313,7 @@ public class MemoReadBus {
 			}
 			break;
 		case 1:
-			ArrayList<ArcOp> parents = MemoWriteBus.getBus().ops.getParentOps(uuid);
+			List<ArcOp> parents = MemoWriteBus.getBus().ops.getParentOps(uuid);
 			result.ensureCapacity(result.size()+parents.size()+1);
 			for (ArcOp op : parents) {
 				if (op.getTimestamp_long() <= timestamp && op.getTimestamp_long() >= since) {

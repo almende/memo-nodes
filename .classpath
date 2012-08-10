@@ -10,9 +10,9 @@
 	<classpathentry exported="true" kind="lib" path="war/WEB-INF/lib/jackson-annotations-2.0.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="war/WEB-INF/lib/jackson-core-2.0.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="war/WEB-INF/lib/jackson-databind-2.0.0.jar"/>
+	<classpathentry kind="lib" path="war/WEB-INF/lib/guava-12.0.1.jar"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry exported="true" kind="lib" path="war/WEB-INF/lib/commons-collections-4.0-SNAPSHOT.jar"/>
 	<classpathentry kind="con" path="com.google.appengine.eclipse.core.GAE_CONTAINER"/>
 	<classpathentry kind="output" path="war/WEB-INF/classes"/>
 </classpath>

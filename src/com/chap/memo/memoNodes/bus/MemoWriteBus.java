@@ -66,7 +66,7 @@ public class MemoWriteBus {
 			memCache = MemcacheServiceFactory.getMemcacheService();
 		}
 		synchronized (values.getNodes()) {
-			if (values.getNodes().totalSize() > 0) {
+			if (values.getNodes().size() > 0) {
 				NodeValueIndex index = new NodeValueIndex(values);
 				ReadBus.addValueIndex(index, values);
 				values = new NodeValueShard();
