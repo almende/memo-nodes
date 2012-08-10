@@ -95,8 +95,11 @@ public class MemoReadBus {
 				.asQueryResultList(withLimit(100));
 		if (rl.size() > 0) {
 			for (Entity ent : rl) {
-				NodeValueIndex index = (NodeValueIndex) MemoStorable.load(ent);
-				NodeValueIndexes.add(index);
+				MemoStorable obj = MemoStorable.load(ent);
+				if (obj != null){
+					NodeValueIndex index = (NodeValueIndex) obj; 
+					NodeValueIndexes.add(index);
+				}
 			}
 			lastValueChange = System.currentTimeMillis();
 		}
@@ -180,13 +183,16 @@ public class MemoReadBus {
 				if (shard == null){
 					shard = (NodeValueShard) MemoStorable
 							.load(index.getShardKey());
-					synchronized (NodeValueShards) {
-						NodeValueShards.put(shard.getMyKey(), shard);
+					if (shard != null){					
+						synchronized (NodeValueShards) {
+							NodeValueShards.put(shard.getMyKey(), shard);
+						}
 					}
 				}
-
-				for (NodeValue nv : shard.findAll(uuid)) {
-					result.add(new MemoNode(nv));
+				if (shard != null){
+					for (NodeValue nv : shard.findAll(uuid)) {
+						result.add(new MemoNode(nv));
+					}
 				}
 			}
 		}
@@ -219,14 +225,18 @@ public class MemoReadBus {
 					}
 					if (shard == null) {
 						shard = (NodeValueShard) MemoStorable.load(index.getShardKey());
-						synchronized (NodeValueShards) {
-							NodeValueShards.put(shard.getMyKey(), shard);		
+						if (shard != null){
+							synchronized (NodeValueShards) {
+								NodeValueShards.put(shard.getMyKey(), shard);		
+							}
 						}
 					}
-					NodeValue res = shard.findBefore(uuid, timestamp);
-					if (result == null
-						|| res.getTimestamp_long() > result.getTimestamp_long()) {
-						result = res;
+					if (shard != null){
+						NodeValue res = shard.findBefore(uuid, timestamp);
+						if (result == null
+								|| res.getTimestamp_long() > result.getTimestamp_long()) {
+							result = res;
+						}
 					}
 				}
 			}
@@ -259,15 +269,19 @@ public class MemoReadBus {
 //							System.out.println("Need to load shard!");
 							shard = (ArcOpShard) MemoStorable
 									.load(index.getShardKey());
-							synchronized (ArcOpShards) {
-								ArcOpShards.put(shard.getMyKey(), shard);	
+							if (shard != null){
+								synchronized (ArcOpShards) {
+									ArcOpShards.put(shard.getMyKey(), shard);	
+								}
 							}
 						}
-						List<ArcOp> children = shard.getChildOps(uuid);
-						result.ensureCapacity(children.size()+1);
-						for (ArcOp op : children) {
-							if (op.getTimestamp_long() <= timestamp) {
-								result.add(op);
+						if (shard != null){
+							List<ArcOp> children = shard.getChildOps(uuid);
+							result.ensureCapacity(children.size()+1);
+							for (ArcOp op : children) {
+								if (op.getTimestamp_long() <= timestamp) {
+									result.add(op);
+								}
 							}
 						}
 					}
@@ -284,16 +298,19 @@ public class MemoReadBus {
 //							System.out.println("Need to load shard!");
 							shard = (ArcOpShard) MemoStorable
 									.load(index.getShardKey());
-							
-							synchronized (ArcOpShards) {
-								ArcOpShards.put(shard.getMyKey(), shard);
+							if (shard != null){							
+								synchronized (ArcOpShards) {
+									ArcOpShards.put(shard.getMyKey(), shard);
+								}
 							}
 						}
-						List<ArcOp> parents = shard.getParentOps(uuid);
-						result.ensureCapacity(parents.size()+1);
-						for (ArcOp op : parents) {
-							if (op.getTimestamp_long() <= timestamp) {
-								result.add(op);
+						if (shard != null){						
+							List<ArcOp> parents = shard.getParentOps(uuid);
+							result.ensureCapacity(parents.size()+1);
+							for (ArcOp op : parents) {
+								if (op.getTimestamp_long() <= timestamp) {
+									result.add(op);
+								}
 							}
 						}
 					}

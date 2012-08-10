@@ -166,8 +166,7 @@ public abstract class MemoStorable implements Serializable,
 			return null;
 		}
 		MemoStorable res = _unserialize(result);
-		//System.out.println("Just read shard of "+result.length+" bytes from "+count+ " fragments in "+(System.currentTimeMillis()-start)+" ms");
-		res.myKey = key;
+		if (res != null) res.myKey = key;
 		return res;
 
 	}
@@ -192,7 +191,8 @@ public abstract class MemoStorable implements Serializable,
 		Iterator<Entity> iter = pq.asIterator();
 		while (iter.hasNext()) {
 			Entity ent = iter.next();
-			result.add(load(ent));
+			MemoStorable obj = load(ent);
+			if (obj != null) result.add(load(ent));
 		}
 		return result;
 	}
