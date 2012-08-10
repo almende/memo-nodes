@@ -3,23 +3,25 @@ package com.chap.memo.memoNodes.servlet;
 import java.util.ArrayList;
 
 import com.chap.memo.memoNodes.MemoNode;
-
-import net.sf.json.JSONArray;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 final public class JSONTuple {
-	JSONArray nodes = new JSONArray();
-	JSONArray links = new JSONArray();
+	static final ObjectMapper om = new ObjectMapper();
+
+	ArrayNode nodes = om.createArrayNode();
+	ArrayNode links = om.createArrayNode();
 	ArrayList<MemoNode> seenNodes= new ArrayList<MemoNode>();
-	public JSONArray getNodes() {
+	public ArrayNode getNodes() {
 		return nodes;
 	}
-	public void setNodes(JSONArray nodes) {
+	public void setNodes(ArrayNode nodes) {
 		this.nodes = nodes;
 	}
-	public JSONArray getLinks() {
+	public ArrayNode getLinks() {
 		return links;
 	}
-	public void setLinks(JSONArray links) {
+	public void setLinks(ArrayNode links) {
 		this.links = links;
 	}
 	public ArrayList<MemoNode> getSeenNodes() {

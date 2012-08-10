@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.regex.Pattern;
 
-import net.sf.json.JSONObject;
-
 import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.bus.MemoWriteBus;
@@ -16,6 +14,8 @@ import com.chap.memo.memoNodes.model.ArcList;
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.chap.memo.memoNodes.servlet.JSONTuple;
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * MemoNode is a graph database, designed to run effectively on the Google App Engine datastore. 
@@ -35,6 +35,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	private static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
 	
 //	private static int existingNodes = 0;
+	static final ObjectMapper om = new ObjectMapper();
 	
 	private MemoReadBus readBus = MemoReadBus.getBus();
 	private MemoWriteBus writeBus = MemoWriteBus.getBus();
@@ -665,31 +666,31 @@ public class MemoNode implements Comparable<MemoNode> {
 		//TODO: prevent loops
 		JSONTuple tuple = new JSONTuple();
 		this.toJSON(depth,tuple);
-		JSONObject result = new JSONObject().
-							element("nodes", tuple.getNodes()).
-							element("links",tuple.getLinks());
-		return result.toString();
+		ObjectNode node = om.createObjectNode();
+		node.put("nodes", tuple.getNodes());
+		node.put("links", tuple.getLinks());
+		return node.toString();
 	}
 
 	private void toJSON(int depth,JSONTuple result) {
 		if (result.getSeenNodes().contains(this)) return;
 		result.getSeenNodes().add(this);
-		JSONObject node = new JSONObject().
-				 element("id",this.getId().toString()).
-				 element("title", this.getStringValue());
+		ObjectNode node = om.createObjectNode();
+		node.put("id", this.getId().toString());
+		node.put("title", this.getStringValue());
 		
 		ArrayList<MemoNode> children = this.getChildren();
 		if (depth-- > 0) {
 			for (MemoNode child : children) {
 				child.toJSON(depth,result);
 				result.getLinks().add(
-						new JSONObject().
-						element("from", this.getId().toString()).
-						element("to",child.getId().toString()));
+						om.createObjectNode().
+						put("from", this.getId().toString()).
+						put("to",child.getId().toString()));
 			}
 		} 
 		if (depth < 0 && children.size()>0){
-			node.element("group", "more");
+			node.put("group", "more");
 		}
 		result.getNodes().add(node);
 	}
