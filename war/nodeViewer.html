@@ -35,7 +35,7 @@
 									json.nodes.map(function(node){ node.text=node.title });
 								}
 								var network = new links.Network(document.getElementById('myNodeView'));
-								network.draw(json.nodes, json.links, options);
+								network.draw(json.nodes, json.links, null, options);
 							}
 						}
 					})
@@ -45,7 +45,6 @@
 			$(document).ready(function() {
 				updateNetwork("");
 			});
-
 		</script>
 	</head>
 	<body>
