@@ -270,6 +270,26 @@ public class MemoNode implements Comparable<MemoNode> {
 		return child;
 	}
 	/**
+	 * Add a new parent arc between the specified parent node and this node, effectively
+	 * making this node a child of the provided node.
+	 * 
+	 * @return this node
+	 */
+	public MemoNode setParent(MemoNode parent){
+		addParent(parent.getId());
+		return this;
+	}
+	/**
+	 * Add a new child arc between the specified child node and this node, effectively making
+	 * the provided node a child of this node.
+	 * 
+	 * @return this node
+	 */
+	public MemoNode setChild(MemoNode child){
+		addChild(child.getId());
+		return this;
+	}
+	/**
 	 * Remove the parent arc between the specified parent node and this node, effectively
 	 * making this node no longer a child of the provided node.
 	 * 
