@@ -34,7 +34,7 @@ public abstract class MemoStorable implements Serializable,
 	private static final long serialVersionUID = -5770613002073776843L;
 	protected final static Logger log = Logger.getLogger(MemoStorable.class.getName());
 	static MyMap<Key, MemoStorable> innerMap_deletedCache = new MyMap<Key, MemoStorable>(
-			50, new Float(0.75), true);
+			10, new Float(0.75), true);
 	static Map<Key, MemoStorable> deletedCache = Collections
 			.synchronizedMap(innerMap_deletedCache);
 
@@ -81,7 +81,7 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public void delete(Key key) {
-		synchronized(deletedCache){
+		synchronized (deletedCache){
 			if (deletedCache.containsKey(key))return;
 			deletedCache.put(key, this);
 		}

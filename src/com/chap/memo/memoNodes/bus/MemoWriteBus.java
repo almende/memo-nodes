@@ -62,6 +62,8 @@ public class MemoWriteBus {
 	}
 
 	private void flushValues() {
+//		System.out.println("FlushValues started");
+	//	long start=System.currentTimeMillis();
 		if (memCache == null){
 			memCache = MemcacheServiceFactory.getMemcacheService();
 		}
@@ -94,9 +96,12 @@ public class MemoWriteBus {
 				memCache.put("memoNodes_lastUpdate",System.currentTimeMillis());
 			}
 		}
+//		System.out.println("Done flushValues:"+(System.currentTimeMillis()-start)+"ms");
 	}
 
 	private void flushOps() {
+	//	System.out.println("FlushOps started");
+	//	long start=System.currentTimeMillis();
 		if (memCache == null){
 			memCache = MemcacheServiceFactory.getMemcacheService();
 		}
@@ -129,6 +134,7 @@ public class MemoWriteBus {
 				}
 			}
 		}}
+	//	System.out.println("Done flushOps:"+(System.currentTimeMillis()-start)+"ms");	
 	}
 
 	public NodeValue store(UUID id, byte[] value) {
