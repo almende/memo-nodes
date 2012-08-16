@@ -310,6 +310,22 @@ public class MemoNode implements Comparable<MemoNode> {
 		return this;
 	}
 	/**
+	 * Checks if given node is a direct parent of this node.
+	 * 
+	 * @return boolean
+	 */
+	public boolean isChildOf(MemoNode node){
+		return this.getParents().contains(node);
+	}
+	/**
+	 * Checks if given node is a direct parent of this node.
+	 * 
+	 * @return boolean
+	 */
+	public boolean isParentOf(MemoNode node){
+		return this.getChildren().contains(node);
+	}
+	/**
 	 * Get current value of node. If node has been deleted, can't be found or has been 
 	 * updated to a null value, this call returns a zero-size byte[].
 	 * 
@@ -545,8 +561,8 @@ public class MemoNode implements Comparable<MemoNode> {
 		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
 		if (properties.size() == 1) {
 			ArrayList<MemoNode> values = properties.get(0).getChildren();
-			if (values.size() != 1)
-				System.out.println("Warning, property with multiple values");
+			if (values.size() > 1)
+				System.out.println("Warning, property with multiple values: "+this.getId()+":"+propName);
 			if (values.size() >= 1)
 				return values.get(0).getStringValue();
 		}

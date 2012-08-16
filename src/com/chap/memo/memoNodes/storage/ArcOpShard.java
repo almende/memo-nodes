@@ -11,14 +11,32 @@ public final class ArcOpShard extends MemoStorable {
 	private static final long serialVersionUID = 7712775430540649570L;
 	public static final int SHARDSIZE = 15000;
 	int currentSize = 0;
-	
-	final ArrayListMultimap<UUID,ArcOp> parents = ArrayListMultimap.create();
-	final ArrayListMultimap<UUID,ArcOp> children = ArrayListMultimap.create();
+		
+	public final ArrayListMultimap<UUID,ArcOp> parents = ArrayListMultimap.create();
+	public final ArrayListMultimap<UUID,ArcOp> children = ArrayListMultimap.create();
 
 	public void store(ArcOp ops) {
-		parents.put(ops.getParent(),ops);
-		children.put(ops.getChild(),ops);
+		synchronized(parents){
+			parents.put(ops.getParent(),ops);
+		}
+		synchronized(children){
+			children.put(ops.getChild(),ops);
+		}
 		currentSize++;
+	}
+	public void store(ArcOpShard shard) {
+		System.out.println("Merging shards!");
+		synchronized(parents){
+			synchronized(shard.parents){
+				parents.putAll(shard.parents);
+			}
+		}
+		synchronized(children){
+			synchronized(shard.children){
+				children.putAll(shard.children);				
+			}
+		}
+		currentSize+=shard.getCurrentSize();
 	}
 
 	public List<ArcOp> getChildOps(UUID id) {

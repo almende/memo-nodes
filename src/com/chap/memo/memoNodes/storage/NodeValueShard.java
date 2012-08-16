@@ -18,12 +18,24 @@ public final class NodeValueShard extends MemoStorable {
 	
 	final ArrayListMultimap<UUID,NodeValue> nodes = ArrayListMultimap.create();
 	
-	
 	public ArrayListMultimap<UUID, NodeValue> getNodes() {
 		return nodes;
 	}
 	public int getCurrentSize() {
 		return currentSize;
+	}
+	public void store(NodeValueShard shard){
+		System.out.println("Merging shards!");
+		synchronized (nodes) {
+			synchronized(shard.getNodes()){
+				nodes.putAll(shard.getNodes());
+			}
+		}
+		if (newest == 0 || shard.getNewest() > newest)
+			newest = shard.getNewest();
+		if (oldest == 0 || shard.getOldest() < oldest)
+			oldest = shard.getOldest();
+		currentSize+=shard.getCurrentSize();
 	}
 	public void store(NodeValue nodeVal) {
 		synchronized (nodes) {

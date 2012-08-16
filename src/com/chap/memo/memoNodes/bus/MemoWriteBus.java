@@ -67,10 +67,30 @@ public class MemoWriteBus {
 		}
 		synchronized (values.getNodes()) {
 			if (values.getNodes().size() > 0) {
+				//If possible, merge into existing shard
+				NodeValueShard other = ReadBus.getSparseNodeValueShard(values.getNodes().size());
+				if (other != null){
+					values.store(other);
+				}
 				NodeValueIndex index = new NodeValueIndex(values);
+				if (other != null){
+					try {
+						NodeValueIndex idx = ReadBus.removeNodeValueIndexByShard(other.getMyKey());
+						if (idx != null) idx.delete();
+					} catch (Exception e){ 
+						System.out.println("Warning: index not found to delete"); 
+						e.printStackTrace();
+					};
+					try {
+						ReadBus.delShard(other);
+						other.delete();
+					} catch (Exception e){ 
+						System.out.println("Warning: shard not found to delete");
+						e.printStackTrace();
+					};
+				}
 				ReadBus.addValueIndex(index, values);
 				values = new NodeValueShard();
-				
 				memCache.put("memoNodes_lastUpdate",System.currentTimeMillis());
 			}
 		}
@@ -80,15 +100,35 @@ public class MemoWriteBus {
 		if (memCache == null){
 			memCache = MemcacheServiceFactory.getMemcacheService();
 		}
-		synchronized (ops) {
+		synchronized (ops.parents) {
+		synchronized (ops.children) {
 			if (ops.getCurrentSize() > 0) {
+				ArcOpShard other = ReadBus.getSparseArcOpShard(ops.getCurrentSize());
+				if (other != null){
+					ops.store(other);
+				}
 				ArcOpIndex index = new ArcOpIndex(ops);
 				ReadBus.addOpsIndex(index, ops);
 				ops = new ArcOpShard();
-				
 				memCache.put("memoNodes_lastUpdate",System.currentTimeMillis());
+				if (other != null){
+					try {
+						ArcOpIndex idx = ReadBus.removeArcOpIndexByShard(other.getMyKey());
+						if (idx != null) idx.delete();
+					} catch (Exception e){ 
+						System.out.println("Warning: index not found to delete");
+						e.printStackTrace();
+					};
+					try {
+						ReadBus.delShard(other);
+						other.delete();
+					} catch (Exception e){ 
+						System.out.println("Warning: shard not found to delete");
+						e.printStackTrace();
+					};
+				}
 			}
-		}
+		}}
 	}
 
 	public NodeValue store(UUID id, byte[] value) {

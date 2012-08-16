@@ -8,13 +8,16 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import com.chap.memo.memoNodes.util.MyMap;
 import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -30,8 +33,15 @@ public abstract class MemoStorable implements Serializable,
 		Comparable<MemoStorable> {
 	private static final long serialVersionUID = -5770613002073776843L;
 	protected final static Logger log = Logger.getLogger(MemoStorable.class.getName());
+	static MyMap<Key, MemoStorable> innerMap_deletedCache = new MyMap<Key, MemoStorable>(
+			50, new Float(0.75), true);
+	static Map<Key, MemoStorable> deletedCache = Collections
+			.synchronizedMap(innerMap_deletedCache);
+
 	static final DatastoreService datastore = DatastoreServiceFactory
 			.getDatastoreService();
+	
+	
 	Key myKey = null;
 	long storeTime;
 	long nanoTime;
@@ -61,6 +71,9 @@ public abstract class MemoStorable implements Serializable,
 		}
 		return result;
 	}
+	public boolean isDeleted(){
+		return deletedCache.containsKey(myKey);
+	}
 
 	public void delete() {
 		if (myKey != null)
@@ -68,6 +81,10 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public void delete(Key key) {
+		synchronized(deletedCache){
+			if (deletedCache.containsKey(key))return;
+			deletedCache.put(key, this);
+		}
 		try {
 			Entity ent = datastore.get(key);
 			if (ent.hasProperty("next")) {
@@ -172,11 +189,12 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public static MemoStorable load(Key key) {
+		MemoStorable res =deletedCache.get(key);
+		if (res != null) return res;
 		try {
 			Entity ent = datastore.get(key);
 			return load(ent);
 		} catch (EntityNotFoundException e) {
-			e.printStackTrace();
 			return null;
 		}
 	}

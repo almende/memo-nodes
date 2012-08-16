@@ -9,7 +9,7 @@ import com.google.appengine.api.datastore.Key;
 //TODO: potentially small, in which case we might want to store multiple indexes in one MemoStorable.
 public final class ArcOpIndex extends MemoStorable {
 	private static final long serialVersionUID = -4925678482726158446L;
-	private Set<UUID> parents;
+	private Set<UUID> parents; //TODO: should be synchronized as well?
 	private Set<UUID> children;
 	private Key shardKey;
 
@@ -20,11 +20,15 @@ public final class ArcOpIndex extends MemoStorable {
 	public ArcOpIndex(ArcOpShard ops) {
 		parents = new HashSet<UUID>(ops.parents.keySet().size());
 		children = new HashSet<UUID>(ops.children.keySet().size());
-		for (UUID uuid: ops.parents.keySet()){
-			parents.add((UUID)uuid.clone());
+		synchronized(ops.parents){
+			for (UUID uuid: ops.parents.keySet()){
+				parents.add((UUID)uuid.clone());
+			}
 		}
-		for (UUID uuid: ops.children.keySet()){
-			children.add((UUID)uuid.clone());
+		synchronized(ops.children){
+			for (UUID uuid: ops.children.keySet()){
+				children.add((UUID)uuid.clone());
+			}
 		}
 		shardKey = ops.store("ArcOpShard");
 		
