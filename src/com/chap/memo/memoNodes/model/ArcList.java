@@ -31,8 +31,8 @@ public class ArcList {
 	}
 
 	public UUID[] update() {
-		if (true|| this.arcops == null || readBus.opsChanged(lastUpdate)) {
-			if (true||this.arcops == null) {
+		if (this.arcops == null || readBus.opsChanged(lastUpdate)) {
+			if (this.arcops == null) {
 				this.arcops = readBus.getOps(nodeId, type, 0);
 			} else {
 				this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
