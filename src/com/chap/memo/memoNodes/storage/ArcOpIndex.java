@@ -1,6 +1,5 @@
 package com.chap.memo.memoNodes.storage;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import com.eaio.uuid.UUID;
@@ -18,20 +17,9 @@ public final class ArcOpIndex extends MemoStorable {
 	
 	//Deep copy constructor
 	public ArcOpIndex(ArcOpShard ops) {
-		parents = new HashSet<UUID>(ops.parents.keySet().size());
-		children = new HashSet<UUID>(ops.children.keySet().size());
-		synchronized(ops.parents){
-			for (UUID uuid: ops.parents.keySet()){
-				parents.add((UUID)uuid.clone());
-			}
-		}
-		synchronized(ops.children){
-			for (UUID uuid: ops.children.keySet()){
-				children.add((UUID)uuid.clone());
-			}
-		}
+		parents = ops.parents.keySet();
+		children = ops.children.keySet();
 		shardKey = ops.store("ArcOpShard");
-		
 		this.store("ArcOpIndex");
 	}
 
@@ -39,31 +27,15 @@ public final class ArcOpIndex extends MemoStorable {
 		return (ArcOpIndex) MemoStorable.load(key);
 	}
 
-	public ArcOpShard loadShard() {
-		return (ArcOpShard) MemoStorable.load(shardKey);
-	}
-
 	public Set<UUID> getParents() {
 		return parents;
-	}
-
-	public void setParents(Set<UUID> parents) {
-		this.parents = parents;
 	}
 
 	public Set<UUID> getChildren() {
 		return children;
 	}
 
-	public void setChildren(Set<UUID> children) {
-		this.children = children;
-	}
-
 	public Key getShardKey() {
 		return shardKey;
-	}
-
-	public void setShardKey(Key shardKey) {
-		this.shardKey = shardKey;
 	}
 }

@@ -1,59 +1,66 @@
 package com.chap.memo.memoNodes.storage;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import com.chap.memo.memoNodes.model.ArcOp;
+import com.chap.memo.memoNodes.model.ArcOpBuffer;
 import com.eaio.uuid.UUID;
+import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 
 public final class ArcOpShard extends MemoStorable {
 	private static final long serialVersionUID = 7712775430540649570L;
-	public static final int SHARDSIZE = 15000;
-	int currentSize = 0;
-		
-	public final ArrayListMultimap<UUID,ArcOp> parents = ArrayListMultimap.create();
-	public final ArrayListMultimap<UUID,ArcOp> children = ArrayListMultimap.create();
-
-	public void store(ArcOp ops) {
-		synchronized(parents){
-			parents.put(ops.getParent(),ops);
+	ArcOp[] parentArray;
+	ArcOp[] childArray;
+	
+	public transient ImmutableListMultimap<UUID,ArcOp> children;
+	public transient ImmutableListMultimap<UUID,ArcOp> parents;
+	
+	public static final ArrayListMultimap<UUID,ArcOp> template = ArrayListMultimap.create();
+	transient boolean init=false;
+	transient boolean toDelete=false;
+	
+	public ArcOpShard(ArcOpBuffer buffer, ArcOpShard other){
+		if (other != null){
+			System.out.println("Merging shards");
+			ArcOp[] par = buffer.parents.values().toArray(new ArcOp[0]);
+			ArcOp[] chld = buffer.children.values().toArray(new ArcOp[0]);
+			parentArray = ObjectArrays.concat(par, other.parentArray,ArcOp.class);
+			childArray = ObjectArrays.concat(chld, other.childArray,ArcOp.class);
+		} else {
+			parentArray = buffer.parents.values().toArray(new ArcOp[0]);
+			childArray = buffer.children.values().toArray(new ArcOp[0]);
 		}
-		synchronized(children){
-			children.put(ops.getChild(),ops);
-		}
-		currentSize++;
+		initMultimaps();
 	}
-	public void store(ArcOpShard shard) {
-		System.out.println("Merging shards!");
-		synchronized(parents){
-			synchronized(shard.parents){
-				parents.putAll(shard.parents);
+	
+	private void initMultimaps(){
+		if (!init){
+			ImmutableListMultimap.Builder<UUID,ArcOp> childBuilder = new ImmutableListMultimap.Builder<UUID,ArcOp>();
+			for (ArcOp ops: Arrays.asList(childArray)){
+				if (ops == null) break;
+		 		childBuilder.put(ops.getChild(),ops);
 			}
-		}
-		synchronized(children){
-			synchronized(shard.children){
-				children.putAll(shard.children);				
+			children = childBuilder.build();
+			ImmutableListMultimap.Builder<UUID,ArcOp> parentBuilder = new ImmutableListMultimap.Builder<UUID,ArcOp>();
+			for (ArcOp ops: Arrays.asList(parentArray)){
+				if (ops == null) break;
+				parentBuilder.put(ops.getParent(),ops);
 			}
+			parents = parentBuilder.build();
+			init=true;
 		}
-		currentSize+=shard.getCurrentSize();
 	}
 
-	public List<ArcOp> getChildOps(UUID id) {
-		List<ArcOp> result = children.get(id);
-		if (result == null)
-			result = new ArrayList<ArcOp>(0);
-		return result;
+	public ImmutableList<ArcOp> getChildOps(UUID id) {
+		initMultimaps();
+		return children.get(id);
 	}
 
-	public List<ArcOp> getParentOps(UUID id) {
-		List<ArcOp> result = parents.get(id);
-		if (result == null)
-			result = new ArrayList<ArcOp>(0);
-		return result;
-	}
-
-	public int getCurrentSize() {
-		return currentSize;
+	public ImmutableList<ArcOp> getParentOps(UUID id) {
+		initMultimaps();
+		return parents.get(id);
 	}
 }

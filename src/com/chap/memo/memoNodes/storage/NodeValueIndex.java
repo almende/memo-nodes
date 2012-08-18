@@ -1,12 +1,10 @@
 package com.chap.memo.memoNodes.storage;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.Key;
 
-//TODO: potentially small, in which case we might want to store multiple indexes in one MemoStorable.
 public final class NodeValueIndex extends MemoStorable {
 	private static final long serialVersionUID = -4925678482726158446L;
 	private Set<UUID> nodeIds;
@@ -18,22 +16,25 @@ public final class NodeValueIndex extends MemoStorable {
 	};
 
 	public NodeValueIndex(NodeValueShard shard) {
-		nodeIds = new HashSet<UUID>(shard.nodes.keySet().size());
-		for (UUID uuid: shard.nodes.keySet()){
-			nodeIds.add((UUID)uuid.clone());
-		}
+		nodeIds = shard.nodes.keySet();
 		shardKey = shard.store("NodeValueShard", shard.newest);
 		oldest = shard.oldest;
 		newest = shard.newest;
 		this.store("NodeValueIndex");
 	}
-
+	
+	@Override
+	public int compareTo(MemoStorable other) {
+		if (other instanceof NodeValueIndex){
+			NodeValueIndex o = (NodeValueIndex) other;
+			return this.newest==o.newest?0:(this.newest>o.newest?1:-1);
+		} else {
+			return super.compareTo(other);
+		}
+	}
+	
 	public static NodeValueIndex load(Key key) {
 		return (NodeValueIndex) MemoStorable.load(key);
-	}
-
-	public NodeValueShard loadShard() {
-		return (NodeValueShard) MemoStorable.load(this.shardKey);
 	}
 
 	public String toString() {
@@ -45,31 +46,16 @@ public final class NodeValueIndex extends MemoStorable {
 		return nodeIds;
 	}
 
-	public void setNodeIds(Set<UUID> nodeIds) {
-		this.nodeIds = nodeIds;
-	}
-
 	public Key getShardKey() {
 		return shardKey;
-	}
-
-	public void setShardKey(Key shardKey) {
-		this.shardKey = shardKey;
 	}
 
 	public long getOldest() {
 		return oldest;
 	}
 
-	public void setOldest(long oldest) {
-		this.oldest = oldest;
-	}
-
 	public long getNewest() {
 		return newest;
 	}
 
-	public void setNewest(long newest) {
-		this.newest = newest;
-	}
 }

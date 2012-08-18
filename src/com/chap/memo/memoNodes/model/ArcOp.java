@@ -1,16 +1,8 @@
 package com.chap.memo.memoNodes.model;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 
-import org.msgpack.MessagePack;
-import org.msgpack.packer.Packer;
-import org.msgpack.unpacker.Unpacker;
-
-import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.eaio.uuid.UUID;
 
 public class ArcOp implements Serializable, Comparable<ArcOp> {
@@ -57,31 +49,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		this.uuid21 = child.clockSeqAndNode;
 		this.timestamp = timestamp.getTime();
 	}
-	
-	public ArcOp(byte[] msg) throws IOException{
-		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
-		ByteArrayInputStream in = new ByteArrayInputStream(msg);
-	    Unpacker unpacker = msgpack.createUnpacker(in);
-    	this.type = unpacker.read(OpsType.class);
-    	this.uuid10 = unpacker.read(long.class);
-    	this.uuid11 = unpacker.read(long.class);
-    	this.uuid20 = unpacker.read(long.class);
-    	this.uuid21 = unpacker.read(long.class);
-		this.timestamp = unpacker.read(long.class);
-    }
-	
-	public byte[] toMsg() throws IOException{
-		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		Packer packer = msgpack.createPacker(out);
-		packer.write(this.type);//Will this work correctly for enums?
-		packer.write(this.uuid10);
-		packer.write(this.uuid11);
-		packer.write(this.uuid20);
-		packer.write(this.uuid21);
-		packer.write(this.timestamp);
-		return out.toByteArray();
-	}
+
 	public OpsType getType() {
 		return type;
 	}
@@ -116,7 +84,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 
 	@Override
 	public int compareTo(ArcOp o) {
-		return (int) ((this.timestamp - o.timestamp) % 1);
+		return this.timestamp==o.timestamp?0:(this.timestamp>o.timestamp?1:-1);
 	}
 
 	@Override

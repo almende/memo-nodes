@@ -1,5 +1,7 @@
 package com.chap.memo.memoNodes.storage;
 
+import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,16 +10,14 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import com.chap.memo.memoNodes.util.MyMap;
 import com.google.appengine.api.datastore.Blob;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -27,17 +27,18 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.datastore.Query.FilterOperator;
-import static com.google.appengine.api.datastore.FetchOptions.Builder.*;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 public abstract class MemoStorable implements Serializable,
 		Comparable<MemoStorable> {
-	private static final long serialVersionUID = -5770613002073776843L;
+	private static final long serialVersionUID = -5770613002073778843L;
 	protected final static Logger log = Logger.getLogger(MemoStorable.class.getName());
-	static MyMap<Key, MemoStorable> innerMap_deletedCache = new MyMap<Key, MemoStorable>(
-			10, new Float(0.75), true);
-	static Map<Key, MemoStorable> deletedCache = Collections
-			.synchronizedMap(innerMap_deletedCache);
-
+	
+	static Cache<Key,MemoStorable> deletedCache = CacheBuilder.newBuilder()
+			.maximumSize(10)
+			.expireAfterWrite(10,TimeUnit.SECONDS)
+			.build();
 	static final DatastoreService datastore = DatastoreServiceFactory
 			.getDatastoreService();
 	
@@ -72,7 +73,8 @@ public abstract class MemoStorable implements Serializable,
 		return result;
 	}
 	public boolean isDeleted(){
-		return deletedCache.containsKey(myKey);
+		if (myKey == null) return true;
+		return (deletedCache.getIfPresent(myKey) != null);
 	}
 
 	public void delete() {
@@ -81,8 +83,8 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public void delete(Key key) {
-		synchronized (deletedCache){
-			if (deletedCache.containsKey(key))return;
+		if (deletedCache.getIfPresent(key) != null) return;
+		if (myKey.equals(key)){
 			deletedCache.put(key, this);
 		}
 		try {
@@ -91,13 +93,17 @@ public abstract class MemoStorable implements Serializable,
 				delete((Key) ent.getProperty("next")); // recurse
 			}
 			datastore.delete(key);
+			try {
+				datastore.get(myKey);
+			} catch (EntityNotFoundException e) {
+			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 	}
 
 	public Key store(String type) {
-		return store(null, type, new Date().getTime());
+		return store(null, type, System.currentTimeMillis());
 	}
 
 	public Key store(String type, long storeDate) {
@@ -105,7 +111,7 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public Key store(Key orig, String type) {
-		return store(orig, type, new Date().getTime());
+		return store(orig, type, System.currentTimeMillis());
 	}
 
 	public Key store(Key orig, String type, long storeDate) {
@@ -136,6 +142,7 @@ public abstract class MemoStorable implements Serializable,
 		}
 
 		if (orig != null) {
+			System.err.println("Warning, storing storable twice! Strange, should not happen with our immutable structures.");
 			ent = new Entity(orig);
 		} else {
 			ent = new Entity(type);
@@ -189,7 +196,7 @@ public abstract class MemoStorable implements Serializable,
 	}
 
 	public static MemoStorable load(Key key) {
-		MemoStorable res =deletedCache.get(key);
+		MemoStorable res =deletedCache.getIfPresent(key);
 		if (res != null) return res;
 		try {
 			Entity ent = datastore.get(key);
@@ -201,8 +208,11 @@ public abstract class MemoStorable implements Serializable,
 
 	public static ArrayList<MemoStorable> getChanges(String type, Date after) {
 
-		Query q = new Query(type).setFilter(new Query.FilterPredicate("timestamp",
-				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime()));
+//		Query q = new Query(type).setFilter(new Query.FilterPredicate("timestamp",
+//				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime()));
+		Query q = new Query(type).addFilter("timestamp",
+				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
+
 		PreparedQuery pq = datastore.prepare(q);
 		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(
 				pq.countEntities(withLimit(1000)));

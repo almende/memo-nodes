@@ -1,17 +1,9 @@
 package com.chap.memo.memoNodes.model;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.msgpack.MessagePack;
-import org.msgpack.packer.Packer;
-import org.msgpack.unpacker.Unpacker;
-
 import com.chap.memo.memoNodes.MemoNode;
-import com.chap.memo.memoNodes.bus.MemoProxyBus;
 import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.bus.MemoWriteBus;
 import com.eaio.uuid.UUID;
@@ -19,91 +11,48 @@ import com.eaio.uuid.UUID;
 public class ArcList {
 	MemoReadBus readBus = MemoReadBus.getBus();
 	MemoWriteBus writeBus = MemoWriteBus.getBus();
-	MemoProxyBus proxyBus = MemoProxyBus.getBus();
-	private boolean isProxy = false;
 	long lastUpdate = 0;
 
-	//UUID[] nodes = new UUID[0];
+	// UUID[] nodes = new UUID[0];
 	ArrayList<ArcOp> arcops = null;
-	
+
 	int type; // 0: parent list, 1:child list
 	UUID nodeId;
 
 	private long timestamp;
 
-	public ArcList(UUID nodeId, int type, boolean isProxy) {
+	public ArcList(UUID nodeId, int type) {
 		this.type = type;
 		this.nodeId = nodeId;
-		this.isProxy = isProxy;
 	}
 
-	public ArcList(UUID nodeId,int type,byte[] msg) throws IOException{
-		this.type = type;
-		this.nodeId = nodeId;
-		this.isProxy = true;
-		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
-		ByteArrayInputStream in = new ByteArrayInputStream(msg);
-	    Unpacker unpacker = msgpack.createUnpacker(in);
-	    int size = unpacker.read(int.class);
-	    this.arcops = new ArrayList<ArcOp>(size);
-	    this.timestamp = unpacker.read(long.class);
-	    for (int i=0; i<size;i++){
-	    	this.arcops.add(new ArcOp(unpacker.read(byte[].class)));
-	    }
-	    ops2nodes();
-	}
-	public byte[] toMsg() throws IOException{
-		update();
-		MessagePack msgpack = MemoProxyBus.getBus().getMsgPack();
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		Packer packer = msgpack.createPacker(out);
-		packer.write(this.arcops.size());
-		packer.write(this.timestamp);
-		for (ArcOp ops : this.arcops){
-			packer.write(ops.toMsg());
-		}
-		return out.toByteArray();
-	}
-	
 	public long getTimestamp_long() {
 		return this.timestamp;
 	}
 
-	public UUID[] update(){
-		if (isProxy){
-			//TODO: Check for changed values
-			this.arcops = proxyBus.getOps(nodeId, type, 0);
-		} else {
-			if (this.arcops == null || readBus.opsChanged(lastUpdate)) {
-				if (this.arcops == null){
-					this.arcops = readBus.getOps(nodeId, type, 0);	
-				} else {
-					this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
-				}
-				lastUpdate = System.currentTimeMillis();
-			}			
+	public UUID[] update() {
+		if (true|| this.arcops == null || readBus.opsChanged(lastUpdate)) {
+			if (true||this.arcops == null) {
+				this.arcops = readBus.getOps(nodeId, type, 0);
+			} else {
+				this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
+			}
+			lastUpdate = System.currentTimeMillis();
 		}
 		return ops2nodes();
 	}
-	
+
 	public ArrayList<MemoNode> getNodes(long timestamp) {
-		if (isProxy){
-			this.arcops = proxyBus.getOps(nodeId, type, timestamp, 0);//TODO: also incremental?
+		if (this.arcops == null) {
+			this.arcops = readBus.getOps(nodeId, type, timestamp, 0);
 		} else {
-			if (this.arcops == null){
-				this.arcops = readBus.getOps(nodeId, type, timestamp, 0);
-			} else {
-				this.arcops.addAll(readBus.getOps(nodeId, type, timestamp,lastUpdate));
-			}
+			this.arcops.addAll(readBus.getOps(nodeId, type, timestamp,
+					lastUpdate));
 		}
 		UUID[] nodes = ops2nodes();
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(nodes.length);
 		for (UUID id : nodes) {
-			if (proxyBus.isProxy(id)){
-				result.add(proxyBus.find(id,timestamp));
-			} else {
-				result.add(readBus.find(id,timestamp));
-			}
+			result.add(readBus.find(id, timestamp));
 		}
 		return result;
 	}
@@ -126,7 +75,7 @@ public class ArcList {
 	}
 
 	public void addNode(UUID other) {
-		if (this.arcops == null){ //small performance gain
+		if (this.arcops == null) { // small performance gain
 			update();
 		}
 		UUID[] arc = new UUID[2];
@@ -134,17 +83,12 @@ public class ArcList {
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
 		ArcOp op = new ArcOp(OpsType.ADD, arc, System.currentTimeMillis());
-		if (isProxy){
-			proxyBus.store(op);
-		} else {
-			//TODO: if other is proxy? Expensive!!!
-			writeBus.store(op);	
-		}
+		writeBus.store(op);
 		arcops.add(op);
 	}
-	
+
 	public void delNode(UUID other) {
-		if (this.arcops == null){ //small performance gain
+		if (this.arcops == null) { // small performance gain
 			update();
 		}
 		UUID[] arc = new UUID[2];
@@ -152,25 +96,22 @@ public class ArcList {
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
 		ArcOp op = new ArcOp(OpsType.DELETE, arc, System.currentTimeMillis());
-		if (isProxy){
-			proxyBus.store(op);
-		} else {
-			writeBus.store(op);	
-		}
+		writeBus.store(op);
 		arcops.add(op);
 	}
 
 	public void clear() {
 		UUID[] nodes = update();
-		arcops.ensureCapacity(arcops.size()+nodes.length);
+		arcops.ensureCapacity(arcops.size() + nodes.length);
 		for (UUID other : nodes) {
 			this.delNode(other);
 		}
 	}
 
 	private UUID[] ops2nodes() {
-		if (arcops == null ) arcops = new ArrayList<ArcOp>(10); 
-		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size()/2);
+		if (arcops == null)
+			arcops = new ArrayList<ArcOp>(10);
+		HashSet<UUID> nodeList = new HashSet<UUID>(arcops.size() / 2);
 		for (ArcOp op : arcops) {
 			switch (op.getType()) {
 			case ADD:

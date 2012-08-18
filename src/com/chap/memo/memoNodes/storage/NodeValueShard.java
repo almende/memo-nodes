@@ -1,54 +1,59 @@
 package com.chap.memo.memoNodes.storage;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
 import com.chap.memo.memoNodes.model.NodeValue;
+import com.chap.memo.memoNodes.model.NodeValueBuffer;
 import com.eaio.uuid.UUID;
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ObjectArrays;
 
 public final class NodeValueShard extends MemoStorable {
 	private static final long serialVersionUID = 7295820980658238258L;
-	public static final int SHARDSIZE = 30000;
 	long oldest = 0;
 	long newest = 0;
-	int currentSize = 0;
 	
-	final ArrayListMultimap<UUID,NodeValue> nodes = ArrayListMultimap.create();
+	NodeValue[] nodeArray;
 	
-	public ArrayListMultimap<UUID, NodeValue> getNodes() {
-		return nodes;
+	public transient ImmutableListMultimap<UUID,NodeValue> nodes;
+	transient boolean init=false;
+	
+	public NodeValueShard(NodeValueBuffer buffer, NodeValueShard other){
+		List<NodeValue> list;
+		if (other != null){
+			System.out.println("Merging shards");
+			NodeValue[] nod = buffer.nodes.values().toArray(new NodeValue[0]);
+			list = Arrays.asList(ObjectArrays.concat(nod, other.nodeArray,NodeValue.class));
+			newest = Math.max(buffer.getNewest(), other.newest);
+			oldest = Math.min(buffer.getOldest(), other.oldest);
+		} else {
+			list = new ArrayList<NodeValue>(buffer.nodes.values());
+			newest = buffer.getNewest();
+			oldest = buffer.getOldest();
+		}
+		Collections.sort(list);
+		nodeArray=list.toArray(new NodeValue[0]);
+		initMultimaps();	
 	}
-	public int getCurrentSize() {
-		return currentSize;
-	}
-	public void store(NodeValueShard shard){
-		System.out.println("Merging shards!");
-		synchronized (nodes) {
-			synchronized(shard.getNodes()){
-				nodes.putAll(shard.getNodes());
+	
+	private void initMultimaps(){
+		if (!init){
+			ImmutableListMultimap.Builder<UUID,NodeValue> nodesBuilder = new ImmutableListMultimap.Builder<UUID,NodeValue>();
+			for (NodeValue nv: Arrays.asList(nodeArray)){
+				nodesBuilder.put(nv.getId(),nv);
 			}
+			nodes = nodesBuilder.build();
+			init=true;
 		}
-		if (newest == 0 || shard.getNewest() > newest)
-			newest = shard.getNewest();
-		if (oldest == 0 || shard.getOldest() < oldest)
-			oldest = shard.getOldest();
-		currentSize+=shard.getCurrentSize();
-	}
-	public void store(NodeValue nodeVal) {
-		synchronized (nodes) {
-			nodes.put(nodeVal.getId(), nodeVal);
-		}
-		if (newest == 0 || nodeVal.getTimestamp_long() > newest)
-			newest = nodeVal.getTimestamp_long();
-		if (oldest == 0 || nodeVal.getTimestamp_long() < oldest)
-			oldest = nodeVal.getTimestamp_long();
-		currentSize++;
 	}
 
-	public List<NodeValue> findAll(UUID id) {
+	public ImmutableList<NodeValue> findAll(UUID id) {
 		return nodes.get(id);
 	}
 
@@ -61,13 +66,12 @@ public final class NodeValueShard extends MemoStorable {
 	}
 
 	public NodeValue findBefore(UUID id, long timestamp_long) {
+		initMultimaps();
 		if (timestamp_long < oldest)
 			return null; // shortcut, will probably not be used...
 
-		List<NodeValue> res = nodes.get(id);
-		if (res != null && !res.isEmpty()) {
-			//Reverse direction might be somewhat faster
-			Collections.sort(res);
+		List<NodeValue> res=nodes.get(id);
+		if (res != null && !res.isEmpty()) {		
 			NodeValue result = null;
 			Iterator<NodeValue> iter = res.iterator();
 			while (iter.hasNext()) {
