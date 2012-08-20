@@ -38,4 +38,7 @@ public final class ArcOpIndex extends MemoStorable {
 	public Key getShardKey() {
 		return shardKey;
 	}
+	public int getSize(){
+		return parents.size();
+	}
 }

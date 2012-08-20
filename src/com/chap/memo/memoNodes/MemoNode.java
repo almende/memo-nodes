@@ -58,6 +58,12 @@ public class MemoNode implements Comparable<MemoNode> {
 		MemoWriteBus.emptyDB();
 	}
 	/**
+	 * Recluster the database for faster access. (Run every couple of minutes)
+	 */
+	public static void compactDB(){
+		MemoReadBus.getBus().compactDB();
+	}
+	/**
 	 * Get the node that can serve as a tree root, providing at least one anchor for the database.
 	 * Use sparsely as this node will otherwise get a lot of children, better to use one or more 
 	 * intermediate nodes.
@@ -455,7 +461,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 	/**
 	 * Remove this node.(=setting its value to null and removing all arcs) This method will delete
-	 * entire subgraphs through setting the provided flag to true. Removing large subgraphs can be
+	 * entire subgraphs. Removing large subgraphs can be
 	 * an expensive operation.
 	 * 
 	 */

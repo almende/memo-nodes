@@ -29,15 +29,15 @@ import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.QueryResultList;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 public class MemoReadBus {
 
 	static Cache<Key, NodeValueShard> NodeValueShards = CacheBuilder
-			.newBuilder().maximumSize(10).build();
+			.newBuilder().maximumSize(100).build();
 	static Cache<Key, ArcOpShard> ArcOpShards = CacheBuilder.newBuilder()
 			.maximumSize(100).build();
 
@@ -164,7 +164,76 @@ public class MemoReadBus {
 		}
 
 	}
+	public void compactDB(){
+		mergeNodeValueShards();
+		mergeArcOpShards();
+		memCache.put("memoNodes_lastUpdate",lastValueChange);
+		loadIndexes(true,0);
+	}
 
+	public synchronized void mergeNodeValueShards(){
+		System.out.println("mergeNodeValueShards called!");
+		Query q = new Query("NodeValueShard").addSort("size",
+				Query.SortDirection.ASCENDING);
+		ArrayList<NodeValueShard> list = new ArrayList<NodeValueShard>(100);
+		int size=0;
+		PreparedQuery shardsQuery = datastore.prepare(q);
+		Iterator<Entity> iter = shardsQuery.asIterable(withLimit(100)).iterator();
+		while (iter.hasNext()){
+			Entity ent = iter.next();
+			System.out.println("Checking entity: "+ent.getProperty("size")+":"+size);
+			if (size + (Long)ent.getProperty("size") <= NodeValueBuffer.SHARDSIZE){
+				size+=(Long)ent.getProperty("size");
+				list.add((NodeValueShard)MemoStorable.load(ent));
+			} else {
+				break;
+			}
+		}
+		if (list.size()>1){
+			System.out.println("Merge "+list.size()+" NodeValueShards!");
+			NodeValueShard shard = new NodeValueShard(list.toArray(new NodeValueShard[0]));
+			NodeValueIndex index = new NodeValueIndex(shard);
+			addNodeValueIndex(index, shard);
+			for (NodeValueShard other: list){
+				NodeValueIndex idx = removeNodeValueIndexByShard(other.getMyKey());
+				if (idx != null) idx.delete();
+				delShard(other);
+				other.delete();
+			}
+		}
+	}
+	public synchronized void mergeArcOpShards(){
+		System.out.println("mergeArcOpShards called!");
+		Query q = new Query("ArcOpShard").addSort("size",
+				Query.SortDirection.ASCENDING);
+		ArrayList<ArcOpShard> list = new ArrayList<ArcOpShard>(100);
+		int size=0;
+		PreparedQuery shardsQuery = datastore.prepare(q);
+		Iterator<Entity> iter = shardsQuery.asIterable(withLimit(100)).iterator();
+		while (iter.hasNext()){
+			Entity ent = iter.next();
+			System.out.println("Checking entity: "+ent.getProperty("size")+":"+size);
+			if (size + (Long)ent.getProperty("size") <= ArcOpBuffer.SHARDSIZE){
+				size+=(Long)ent.getProperty("size");
+				list.add((ArcOpShard)MemoStorable.load(ent));
+			} else {
+				break;
+			}
+		}
+		if (list.size()>1){
+			System.out.println("Merge "+list.size()+" ArcOpShards!");
+			ArcOpShard shard = new ArcOpShard(list.toArray(new ArcOpShard[0]));
+			ArcOpIndex index = new ArcOpIndex(shard);
+			addOpsIndex(index, shard);
+			for (ArcOpShard other: list){
+				ArcOpIndex idx = removeArcOpIndexByShard(other.getMyKey());
+				if (idx != null) idx.delete();
+				delShard(other);
+				other.delete();
+			}
+		}
+	}
+	
 	public void addNodeValueIndex(NodeValueIndex index, NodeValueShard shard) {
 		NodeValueShards.put(index.getShardKey(), shard);
 		synchronized (NodeValueIndexes) {
@@ -339,15 +408,11 @@ public class MemoReadBus {
 
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
 		result = writeBus.values.findBefore(uuid, timestamp);
-		
-//		if (result != null) System.out.println("Result from writeBus:"+uuid+":"+new String(result.getValue()));
 		ImmutableList<NodeValueIndex> copy;
 		synchronized (NodeValueIndexes) {
 			if (NodeValueIndexes.size() == 0){
-//				System.out.println("early return as indexes are empty!."+uuid);
 				return result;
 			}
-			// Iterator through indexes, copy because stuff might disappear
 			copy = ImmutableList.copyOf(NodeValueIndexes);
 		}
 		Iterator<NodeValueIndex> iter = copy.iterator();
@@ -355,7 +420,6 @@ public class MemoReadBus {
 			NodeValueIndex index = iter.next();
 			if (result != null
 					&& index.getNewest() < result.getTimestamp_long()){
-//				System.out.println("Early out as index.getNewest too old!."+uuid+":"+new String(result.getValue()));
 				return result;
 			}
 			if (index.getOldest() < timestamp
@@ -363,7 +427,7 @@ public class MemoReadBus {
 				NodeValueShard shard = NodeValueShards.getIfPresent(index
 						.getShardKey());
 				if (shard == null) {
-//					System.out.println("Needed to load shard."+uuid);
+//					System.out.println("Needed to load nv shard."+uuid);
 					shard = (NodeValueShard) MemoStorable.load(index
 							.getShardKey());
 					if (shard != null) {
@@ -458,7 +522,7 @@ public class MemoReadBus {
 						ArcOpShard shard = ArcOpShards.getIfPresent(index
 								.getShardKey());
 						if (shard == null) {
-							System.out.println("Need to load ops shard!"+uuid);
+//							System.out.println("Need to load ops shard!"+uuid);
 							shard = (ArcOpShard) MemoStorable.load(index
 									.getShardKey());
 							if (shard != null) {

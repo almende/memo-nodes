@@ -123,7 +123,7 @@ public abstract class MemoStorable implements Serializable,
 		this.nanoTime = System.nanoTime();
 
 		byte[] data = this.serialize();
-		int length = data.length;
+		Integer length = data.length;
 		int pointer = 0;
 //		int counter = 0;
 		while (length - pointer >= MAXSIZE) {
@@ -152,6 +152,7 @@ public abstract class MemoStorable implements Serializable,
 		if (next != null)
 			ent.setUnindexedProperty("next", next);
 		ent.setProperty("timestamp", this.storeTime);
+		ent.setProperty("size", this.getSize());
 		datastore.put(ent);
 //		counter++;
 		myKey = ent.getKey();
@@ -312,4 +313,6 @@ public abstract class MemoStorable implements Serializable,
 	public void setMyKey(Key myKey) {
 		this.myKey = myKey;
 	}
+	
+	public abstract int getSize();
 }

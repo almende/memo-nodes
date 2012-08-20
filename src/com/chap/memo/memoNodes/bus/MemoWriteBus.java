@@ -64,7 +64,7 @@ public class MemoWriteBus {
 		}
 		ops.flush();
 		values.flush();
-		readBus.updateIndexes();
+		readBus.loadIndexes(true,0);
 	}
 
 	public NodeValue store(UUID id, byte[] value) {

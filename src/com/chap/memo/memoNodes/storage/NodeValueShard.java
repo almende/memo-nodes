@@ -18,16 +18,35 @@ public final class NodeValueShard extends MemoStorable {
 	private static final long serialVersionUID = 7295820980658238258L;
 	long oldest = 0;
 	long newest = 0;
-	
 	NodeValue[] nodeArray;
 	
 	public transient ImmutableListMultimap<UUID,NodeValue> nodes;
 	transient boolean init=false;
-	
+	/*
+	 * Constructor for merging set of shards
+	 */
+	public NodeValueShard(NodeValueShard[] shards){
+		NodeValueShard shard = shards[0];
+		newest = shard.newest;
+		oldest = shard.oldest;
+		List<NodeValue> list = new ArrayList<NodeValue>();
+		list.addAll(Arrays.asList(shard.nodeArray));
+		for (NodeValueShard other : shards){
+			if (other.equals(shard)) continue;
+			list.addAll(Arrays.asList(other.nodeArray));
+			newest = Math.max(newest, other.newest);
+			oldest = Math.min(oldest, other.oldest);
+		}
+		Collections.sort(list);
+		nodeArray = list.toArray(new NodeValue[0]);
+		initMultimaps();
+	}
+	/*
+	 * Constructor for creating shard based on Buffer, with optional shard to merge with.
+	 */
 	public NodeValueShard(NodeValueBuffer buffer, NodeValueShard other){
 		List<NodeValue> list;
 		if (other != null){
-			System.out.println("Merging shards");
 			NodeValue[] nod = buffer.nodes.values().toArray(new NodeValue[0]);
 			list = Arrays.asList(ObjectArrays.concat(nod, other.nodeArray,NodeValue.class));
 			newest = Math.max(buffer.getNewest(), other.newest);
@@ -96,5 +115,8 @@ public final class NodeValueShard extends MemoStorable {
 	public long getNewest() {
 		return newest;
 	}
-
+	@Override
+	public int getSize(){
+		return nodeArray.length;
+	}
 }

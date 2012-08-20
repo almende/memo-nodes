@@ -53,6 +53,9 @@ public final class NodeValueIndex extends MemoStorable {
 	public long getOldest() {
 		return oldest;
 	}
+	public int getSize(){
+		return nodeIds.size();
+	}
 
 	public long getNewest() {
 		return newest;

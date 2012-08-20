@@ -5,14 +5,22 @@ xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
 http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 	<servlet>
-		<servlet-name>Memo</servlet-name>
+		<servlet-name>MemoTest</servlet-name>
 		<servlet-class>com.chap.memo.memoNodes.servlet.MemoTestServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>MemoTest</servlet-name>
+		<url-pattern>/test</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>Memo</servlet-name>
+		<servlet-class>com.chap.memo.memoNodes.servlet.MemoServlet</servlet-class>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>Memo</servlet-name>
 		<url-pattern>/memo</url-pattern>
 	</servlet-mapping>
-	<servlet>
+		<servlet>
 		<servlet-name>JSON</servlet-name>
 		<servlet-class>com.chap.memo.memoNodes.servlet.MemoJSONServlet</servlet-class>
 	</servlet>
