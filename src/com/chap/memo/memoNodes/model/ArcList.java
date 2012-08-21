@@ -1,6 +1,7 @@
 package com.chap.memo.memoNodes.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 
 import com.chap.memo.memoNodes.MemoNode;
@@ -37,6 +38,7 @@ public class ArcList {
 			} else {
 				this.arcops.addAll(readBus.getOps(nodeId, type, lastUpdate));
 			}
+			Collections.sort(this.arcops);
 			lastUpdate = System.currentTimeMillis();
 		}
 		return ops2nodes();
@@ -49,6 +51,8 @@ public class ArcList {
 			this.arcops.addAll(readBus.getOps(nodeId, type, timestamp,
 					lastUpdate));
 		}
+		Collections.sort(this.arcops);
+		
 		UUID[] nodes = ops2nodes();
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(nodes.length);
 		for (UUID id : nodes) {

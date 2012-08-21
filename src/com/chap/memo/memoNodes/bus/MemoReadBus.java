@@ -595,7 +595,6 @@ public class MemoReadBus {
 			}
 		}
 		result.addAll(wbresult);
-		Collections.sort(result);
 		return result;
 	}
 
