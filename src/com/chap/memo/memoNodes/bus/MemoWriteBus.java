@@ -54,7 +54,7 @@ public class MemoWriteBus {
 			}
 		}
 		MemoWriteBus.getBus().empty();
-		MemoReadBus.getBus().loadIndexes(true, 0);
+		MemoReadBus.getBus().loadIndexes(true);
 		System.out.println("Database cleared!");
 	}
 
@@ -64,7 +64,7 @@ public class MemoWriteBus {
 		}
 		ops.flush();
 		values.flush();
-		readBus.loadIndexes(true,0);
+		readBus.loadIndexes(true);
 	}
 
 	public NodeValue store(UUID id, byte[] value) {

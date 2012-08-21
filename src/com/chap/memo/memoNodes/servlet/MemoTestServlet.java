@@ -72,14 +72,38 @@ public class MemoTestServlet extends HttpServlet {
 			if (debug)
 				System.out.println("Outputting debug info:" + debugStr);
 
+			int nofNodes = 10000;
+			String sNofNodes = req.getParameter("nofNodes");
+			if (sNofNodes != null) {
+				try {
+					nofNodes = Integer.parseInt(sNofNodes);
+				} catch (Exception e) {
+					System.out.println("couldn't parse nofNodes=" + sNofNodes);
+				}
+			}
+			int nofArcs = 10000;
+			String snofArcs = req.getParameter("nofArcs");
+			if (snofArcs != null) {
+				try {
+					nofArcs = Integer.parseInt(snofArcs);
+				} catch (Exception e) {
+					System.out.println("couldn't parse nofArcs=" + snofArcs);
+				}
+			}
+			
 			String nofParallel = req.getParameter("parallel");
 			if (nofParallel == null) {
 				nofParallel = "1";
 			}
 			if (Integer.parseInt(nofParallel)>1){
 				log(resp, true, "Going parallel:"+nofParallel,"");
-
-				TaskOptions to = withUrl("/memo").param("parallel","1").countdownMillis(1);
+				
+				TaskOptions to = withUrl("/test")
+						.param("parallel","1")
+						.param("nofNodes", Integer.toString(nofNodes))
+						.param("nofArcs", Integer.toString(nofArcs))
+						.countdownMillis(1);
+				
 				int np = Integer.parseInt(nofParallel);
 				while (np-- > 0){
 					queue.add(to);
@@ -289,6 +313,28 @@ public class MemoTestServlet extends HttpServlet {
 					+ first.getChildren().get(1).getId() + "/"
 					+ first.getChildren().get(1).getStringValue());
 
+			log(resp, true, "\nMerge shards test, compacting DB:");
+			MemoNode.compactDB();
+
+			log(resp, (first.getChildren().size() == 2),
+					"Parent has two children", ":" + first.getId() + ":"
+							+ first.getChildren().size());
+			log(resp, (first.getParents().size() == 0),
+					"Parent has no parents", ":" + first.getId() + ":"
+							+ first.getParents().size());
+			log(resp, (second.getParents().size() == 1),
+					"First child has one parent", ":" + second.getId() + ":"
+							+ second.getParents().size());
+			log(resp, (third.getParents().size() == 1),
+					"Second child has one parent", ":" + third.getId() + ":"
+							+ third.getParents().size());
+			log(resp, true, "First child found", ": " + first.getId() + "|"
+					+ first.getChildren().get(0).getId() + "/"
+					+ first.getChildren().get(0).getStringValue());
+			log(resp, true, "Second child found", ": " + first.getId() + "|"
+					+ first.getChildren().get(1).getId() + "/"
+					+ first.getChildren().get(1).getStringValue());
+			
 			log(resp, true, "\nTesting Properties:");
 			first.setPropertyValue("test", "hello");
 			log(resp, test(first.getPropertyValue("test"), "hello"),
@@ -333,9 +379,8 @@ public class MemoTestServlet extends HttpServlet {
 			log(resp, newPropNode.getChildren().size() == 2,
 					"Node has two properties", ":"
 							+ newPropNode.getChildren().size());
-
+			
 			log(resp, true, "\nTrying to recursively delete nodes:");
-
 			first.delete();
 			log(resp, first.getChildren().size() == 0, "First has no children",
 					":" + first.getChildren().size());
@@ -348,15 +393,8 @@ public class MemoTestServlet extends HttpServlet {
 
 			MemoNode node;
 
-			int nofNodes = 10000;
-			String sNofNodes = req.getParameter("nofNodes");
-			if (sNofNodes != null) {
-				try {
-					nofNodes = Integer.parseInt(sNofNodes);
-				} catch (Exception e) {
-					System.out.println("couldn't parse nofNodes=" + sNofNodes);
-				}
-			}
+			MemoNode.compactDB();
+
 			Date start = new Date();
 			log(resp, true, "\nPerformance test: Depth (" + nofNodes + ")");
 
@@ -396,22 +434,19 @@ public class MemoTestServlet extends HttpServlet {
 			startNode.delete();
 			log(resp, true, " Nodes deleted again in:"
 					+ (new Date().getTime() - time.getTime()) + " ms");
+
+			
 			time = new Date();
-
 			MemoNode.flushDB();
-
 			log(resp, true,
 					" Db flushed:" + (new Date().getTime() - time.getTime())
 							+ " ms");
-			int nofArcs = 10000;
-			String snofArcs = req.getParameter("nofArcs");
-			if (snofArcs != null) {
-				try {
-					nofArcs = Integer.parseInt(snofArcs);
-				} catch (Exception e) {
-					System.out.println("couldn't parse nofArcs=" + snofArcs);
-				}
-			}
+			time = new Date();
+			MemoNode.compactDB();
+			log(resp, true,
+					" Db compacted:" + (new Date().getTime() - time.getTime())
+							+ " ms");
+			
 			long arcStart = System.currentTimeMillis();
 			log(resp, true, "\nPerformance test: Breadth (" + nofArcs + ")");
 

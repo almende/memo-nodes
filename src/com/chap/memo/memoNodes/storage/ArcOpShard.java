@@ -17,8 +17,8 @@ public final class ArcOpShard extends MemoStorable {
 	ArcOp[] parentArray;
 	ArcOp[] childArray;
 	
-	public transient ImmutableListMultimap<UUID,ArcOp> children;
-	public transient ImmutableListMultimap<UUID,ArcOp> parents;
+	public transient ImmutableListMultimap<UUID,ArcOp> children=null;
+	public transient ImmutableListMultimap<UUID,ArcOp> parents=null;
 	
 	public static final ArrayListMultimap<UUID,ArcOp> template = ArrayListMultimap.create();
 	transient boolean init=false;
@@ -54,7 +54,7 @@ public final class ArcOpShard extends MemoStorable {
 		initMultimaps();
 	}
 	
-	private void initMultimaps(){
+	public void initMultimaps(){
 		if (!init){
 			ImmutableListMultimap.Builder<UUID,ArcOp> childBuilder = new ImmutableListMultimap.Builder<UUID,ArcOp>();
 			for (ArcOp ops: Arrays.asList(childArray)){

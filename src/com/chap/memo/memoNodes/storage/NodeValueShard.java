@@ -20,7 +20,7 @@ public final class NodeValueShard extends MemoStorable {
 	long newest = 0;
 	NodeValue[] nodeArray;
 	
-	public transient ImmutableListMultimap<UUID,NodeValue> nodes;
+	public transient ImmutableListMultimap<UUID,NodeValue> nodes=null;
 	transient boolean init=false;
 	/*
 	 * Constructor for merging set of shards
@@ -61,7 +61,7 @@ public final class NodeValueShard extends MemoStorable {
 		initMultimaps();	
 	}
 	
-	private void initMultimaps(){
+	public void initMultimaps(){
 		if (!init){
 			ImmutableListMultimap.Builder<UUID,NodeValue> nodesBuilder = new ImmutableListMultimap.Builder<UUID,NodeValue>();
 			for (NodeValue nv: Arrays.asList(nodeArray)){

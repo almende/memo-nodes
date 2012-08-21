@@ -2,6 +2,7 @@ package com.chap.memo.memoNodes.storage;
 
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,6 +15,8 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+//import java.util.zip.GZIPInputStream;
+//import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -49,13 +52,13 @@ public abstract class MemoStorable implements Serializable,
 
 	private byte[] serialize() {
 		byte[] result = null;
-		ByteArrayOutputStream bos = new ByteArrayOutputStream(5000);
-		ZipOutputStream zos = new ZipOutputStream(bos);
+		ByteArrayOutputStream bos = new ByteArrayOutputStream(150000);
 		try {
+//			GZIPOutputStream zos = new GZIPOutputStream(bos);
+			ZipOutputStream zos = new ZipOutputStream(bos);
 			// zos.setLevel(4);
 			zos.putNextEntry(new ZipEntry("Object"));
 			ObjectOutputStream oos = new ObjectOutputStream(zos);
-			// ObjectOutputStream oos = new ObjectOutputStream(bos);
 			oos.writeObject(this);
 			oos.flush();
 			oos.reset();
@@ -72,6 +75,30 @@ public abstract class MemoStorable implements Serializable,
 		}
 		return result;
 	}
+	private static MemoStorable _unserialize(byte[] data) {
+		MemoStorable result = null;
+		ByteArrayInputStream bis = new ByteArrayInputStream(data);
+		try {
+//			GZIPInputStream zis = new GZIPInputStream(bis,1000000);
+			ZipInputStream zis = new ZipInputStream(bis);
+			zis.getNextEntry();
+			BufferedInputStream bus = new  BufferedInputStream(zis,15000);
+			ObjectInputStream ios = new ObjectInputStream(bus);
+			result = (MemoStorable) ios.readObject();
+			zis.closeEntry();
+			bis.reset();
+			bis.close();
+			zis.close();
+			ios.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+		
 	public boolean isDeleted(){
 		if (myKey == null) return true;
 		return (deletedCache.getIfPresent(myKey) != null);
@@ -82,6 +109,15 @@ public abstract class MemoStorable implements Serializable,
 			delete(myKey);
 	}
 
+	public void delete(boolean fullDrop){
+		if (myKey != null){
+			delete(myKey);
+			if (fullDrop){
+				deletedCache.invalidate(myKey);
+			}
+		}
+	}
+	
 	public void delete(Key key) {
 		if (deletedCache.getIfPresent(key) != null) return;
 		if (myKey.equals(key)){
@@ -264,29 +300,6 @@ public abstract class MemoStorable implements Serializable,
 	@Override
 	public int hashCode() {
 		return (int) (myKey.hashCode() * this.nanoTime) % Integer.MAX_VALUE;
-	}
-
-	private static MemoStorable _unserialize(byte[] data) {
-		MemoStorable result = null;
-		ByteArrayInputStream bis = new ByteArrayInputStream(data);
-		ZipInputStream zis = new ZipInputStream(bis);
-		try {
-			zis.getNextEntry();
-			ObjectInputStream ios = new ObjectInputStream(zis);
-			// ObjectInputStream ios = new ObjectInputStream(bis);
-			result = (MemoStorable) ios.readObject();
-			zis.closeEntry();
-			bis.reset();
-			bis.close();
-			zis.close();
-			ios.close();
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-		return result;
 	}
 
 	// Tools:
