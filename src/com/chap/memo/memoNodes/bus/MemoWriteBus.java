@@ -1,5 +1,11 @@
 package com.chap.memo.memoNodes.bus;
 
+import java.io.BufferedInputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+
 import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.ArcOpBuffer;
 import com.chap.memo.memoNodes.model.NodeValue;
@@ -58,6 +64,26 @@ public class MemoWriteBus {
 		System.out.println("Database cleared!");
 	}
 
+	public void importDB(InputStream in){
+		BufferedInputStream bus = new  BufferedInputStream(in,15000);
+		ObjectInputStream ios;
+		try {
+			ios = new ObjectInputStream(bus);
+			while (true){
+				Object elem = ios.readObject();
+				if (elem == null) break;
+				if (elem instanceof ArcOp) store((ArcOp)elem);
+				if (elem instanceof NodeValue) store((NodeValue)elem);
+			}
+		} catch (EOFException eof){
+			System.out.println("Done importDB...");
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public void flush() {
 		if (readBus == null){
 			readBus = MemoReadBus.getBus();
@@ -67,6 +93,14 @@ public class MemoWriteBus {
 		readBus.loadIndexes(true);
 	}
 
+	public NodeValue store(NodeValue result){
+		if (readBus == null){
+			readBus = MemoReadBus.getBus();
+		}
+		values.store(result);
+		readBus.lastValueChange = System.currentTimeMillis();
+		return result;
+	}
 	public NodeValue store(UUID id, byte[] value) {
 		if (readBus == null){
 			readBus = MemoReadBus.getBus();

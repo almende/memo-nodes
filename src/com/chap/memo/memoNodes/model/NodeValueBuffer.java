@@ -15,7 +15,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
 public class NodeValueBuffer {
-	public static final int SHARDSIZE = 40000;
+	public static final int SHARDSIZE = 30000;
 	MemoReadBus ReadBus;
 
 	public static final ArrayListMultimap<UUID, NodeValue> template = ArrayListMultimap

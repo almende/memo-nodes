@@ -1,5 +1,7 @@
 package com.chap.memo.memoNodes;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -62,6 +64,18 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public static void compactDB(){
 		MemoReadBus.getBus().compactDB();
+	}
+	/**
+	 * Export the entire node database as a byte array
+	 */
+	public static void exportDB(OutputStream out){
+		MemoReadBus.getBus().exportDB(out,false);
+	}
+	/**
+	 * import the given byte array as subgraph, HOW?
+	 */
+	public static void importDB(InputStream in){
+		MemoWriteBus.getBus().importDB(in);
 	}
 	/**
 	 * Get the node that can serve as a tree root, providing at least one anchor for the database.
@@ -519,8 +533,10 @@ public class MemoNode implements Comparable<MemoNode> {
 			//explicit no-break
 		default:
 			System.out
-					.println("Error, incorrect properties found, skipping setPropertyValue("
+					.println("Error, incorrect properties found, repairing! setPropertyValue("
 							+ propName + "," + propValue + ")!");
+			properties.get(0).delete();
+			return setPropertyValue(propName,propValue);
 		}
 		return this;
 	}

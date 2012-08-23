@@ -1,5 +1,6 @@
 package com.chap.memo.memoNodes.storage;
 
+import java.util.Arrays;
 import java.util.Set;
 
 import com.eaio.uuid.UUID;
@@ -7,16 +8,23 @@ import com.google.appengine.api.datastore.Key;
 
 public final class NodeValueIndex extends MemoStorable {
 	private static final long serialVersionUID = -4925678482726158446L;
-	private Set<UUID> nodeIds;
+	
+	private long[] nodeIdArray;
 	private Key shardKey;
 	private long oldest;
 	private long newest;
-
+	
 	NodeValueIndex() {
 	};
 
 	public NodeValueIndex(NodeValueShard shard) {
-		nodeIds = shard.nodes.keySet();
+		Set<UUID> set = shard.nodes.keySet();
+		nodeIdArray = new long[set.size()];
+		int i=0;
+		for (UUID node: set){
+			nodeIdArray[i++]=node.time;
+		}
+		Arrays.sort(nodeIdArray);
 		shardKey = shard.store("NodeValueShard", shard.newest);
 		oldest = shard.oldest;
 		newest = shard.newest;
@@ -32,20 +40,19 @@ public final class NodeValueIndex extends MemoStorable {
 			return super.compareTo(other);
 		}
 	}
-	
 	public static NodeValueIndex load(Key key) {
 		return (NodeValueIndex) MemoStorable.load(key);
 	}
 
 	public String toString() {
 		return this.myKey + ": " + oldest + "/" + newest + " : "
-				+ nodeIds.size() + " - " + this.nanoTime;
+				+ nodeIdArray.length + " - " + this.nanoTime;
 	}
 
-	public Set<UUID> getNodeIds() {
-		return nodeIds;
+	public boolean contains(UUID uuid){
+		return (Arrays.binarySearch(nodeIdArray, uuid.getTime())>=0);
 	}
-
+	
 	public Key getShardKey() {
 		return shardKey;
 	}
@@ -54,7 +61,7 @@ public final class NodeValueIndex extends MemoStorable {
 		return oldest;
 	}
 	public int getSize(){
-		return nodeIds.size();
+		return nodeIdArray.length;
 	}
 
 	public long getNewest() {

@@ -1,24 +1,36 @@
 package com.chap.memo.memoNodes.storage;
 
+import java.util.Arrays;
 import java.util.Set;
 
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.Key;
 
-//TODO: potentially small, in which case we might want to store multiple indexes in one MemoStorable.
+
 public final class ArcOpIndex extends MemoStorable {
 	private static final long serialVersionUID = -4925678482726158446L;
-	private Set<UUID> parents; //TODO: should be synchronized as well?
-	private Set<UUID> children;
+	private long[] parentArray; 
+	private long[] childrenArray;
 	private Key shardKey;
 
-	ArcOpIndex() {
-	}
+	ArcOpIndex() {}
 	
 	//Deep copy constructor
 	public ArcOpIndex(ArcOpShard ops) {
-		parents = ops.parents.keySet();
-		children = ops.children.keySet();
+		Set<UUID> parentsSet = ops.parents.keySet();
+		Set<UUID> childrenSet = ops.children.keySet();
+		parentArray = new long[parentsSet.size()];
+		int i=0;
+		for (UUID parent: parentsSet){
+			parentArray[i++]=parent.time;
+		}
+		Arrays.sort(parentArray);
+		childrenArray = new long[childrenSet.size()];
+		i=0;
+		for (UUID child: childrenSet){
+			childrenArray[i++]=child.time;
+		}
+		Arrays.sort(childrenArray);
 		shardKey = ops.store("ArcOpShard");
 		this.store("ArcOpIndex");
 	}
@@ -27,18 +39,18 @@ public final class ArcOpIndex extends MemoStorable {
 		return (ArcOpIndex) MemoStorable.load(key);
 	}
 
-	public Set<UUID> getParents() {
-		return parents;
+	public boolean containsParent(UUID uuid){
+		return (Arrays.binarySearch(parentArray,uuid.getTime()) >= 0);
 	}
-
-	public Set<UUID> getChildren() {
-		return children;
+	public boolean containsChild(UUID uuid){
+		return (Arrays.binarySearch(childrenArray,uuid.getTime()) >= 0);
 	}
 
 	public Key getShardKey() {
 		return shardKey;
 	}
 	public int getSize(){
-		return parents.size();
+		return parentArray.length;
 	}
 }
+

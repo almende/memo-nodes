@@ -49,7 +49,12 @@ public abstract class MemoStorable implements Serializable,
 	Key myKey = null;
 	long storeTime;
 	long nanoTime;
-
+	transient int storedSize;
+	
+	public int getStoredSize(){
+		return storedSize;
+	}
+	
 	private byte[] serialize() {
 		byte[] result = null;
 		ByteArrayOutputStream bos = new ByteArrayOutputStream(150000);
@@ -149,7 +154,7 @@ public abstract class MemoStorable implements Serializable,
 	public Key store(Key orig, String type) {
 		return store(orig, type, System.currentTimeMillis());
 	}
-
+	
 	public Key store(Key orig, String type, long storeDate) {
 //		long start = System.currentTimeMillis();
 		final int MAXSIZE = 1000000;
@@ -197,6 +202,7 @@ public abstract class MemoStorable implements Serializable,
 			datastore.get(myKey);
 		} catch (EntityNotFoundException e) {
 		}
+		this.storedSize=length;
 		//System.out.println("Just stored shard of "+length+ " bytes in "+counter+" fragments  in "+(System.currentTimeMillis()-start)+" ms");
 		return myKey;
 	}
@@ -227,6 +233,7 @@ public abstract class MemoStorable implements Serializable,
 			return null;
 		}
 		MemoStorable res = _unserialize(result);
+		res.storedSize=result.length;
 		if (res != null) res.myKey = key;
 		return res;
 

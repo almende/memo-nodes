@@ -9,7 +9,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 
 public class ArcOpBuffer {
-	public final static int SHARDSIZE = 40000;
+	public final static int SHARDSIZE = 30000;
 	MemoReadBus ReadBus;
 
 	public static final ArrayListMultimap<UUID, ArcOp> template = ArrayListMultimap
