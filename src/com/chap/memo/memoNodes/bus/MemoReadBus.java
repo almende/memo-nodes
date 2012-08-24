@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.model.ArcOp;
@@ -48,10 +47,11 @@ public class MemoReadBus {
 					return shard.getStoredSize();
 				}				
 			}).build(
-					new CacheLoader<Key, NodeValueShard>(){
+					new CacheLoader<Key, NodeValueShard>() {
 						public NodeValueShard load(Key key){
 							System.out.println("Need to load nv shard! ("+key+")");
-							return (NodeValueShard) MemoStorable.load(key);
+							NodeValueShard shard = (NodeValueShard) MemoStorable.load(key);
+							return shard;
 						}
 					}
 			);
@@ -425,10 +425,9 @@ public class MemoReadBus {
 			if (index.contains(uuid)) {
 				NodeValueShard shard=null;
 				try {
-					shard = NodeValueShards.get(index.getShardKey());
-				} catch (ExecutionException e) {
-					System.out.println("Couldn't load nv shard!"+e.getLocalizedMessage());
-					e.printStackTrace();
+					shard = NodeValueShards.getUnchecked(index.getShardKey());
+				} catch (Exception e){
+					System.err.println("missed a ops shard, merged db? "+index.getShardKey());
 				}
 				if (shard == null) {
 					// Happens if shard has been deleted, indication that
@@ -484,10 +483,9 @@ public class MemoReadBus {
 					&& index.contains(uuid)) {
 				NodeValueShard shard=null;
 				try {
-					shard = NodeValueShards.get(index.getShardKey());
-				} catch (ExecutionException e) {
-					System.out.println("Couldn't load nv shard!"+e.getLocalizedMessage());
-					e.printStackTrace();
+					shard = NodeValueShards.getUnchecked(index.getShardKey());
+				} catch (Exception e){
+					System.err.println("missed a ops shard, merged db? "+index.getShardKey());
 				}
 				if (shard == null) {
 					// Happens if shard has been deleted, indication
@@ -578,10 +576,9 @@ public class MemoReadBus {
 					if (index.containsChild(uuid)) {
 						ArcOpShard shard=null;
 						try {
-							shard = ArcOpShards.get(index.getShardKey());
-						} catch (ExecutionException e) {
-							System.out.println("Couldn't load nv shard!"+e.getLocalizedMessage());
-							e.printStackTrace();
+							shard = ArcOpShards.getUnchecked(index.getShardKey());
+						} catch (Exception e){
+							System.err.println("missed a ops shard, merged db? "+index.getShardKey());
 						}
 						if (shard == null) {
 							// Happens if shard has been deleted, indication
@@ -613,10 +610,9 @@ public class MemoReadBus {
 					if (index.containsParent(uuid)) {
 						ArcOpShard shard=null;
 						try {
-							shard = ArcOpShards.get(index.getShardKey());
-						} catch (ExecutionException e) {
-							System.out.println("Couldn't load nv shard!"+e.getLocalizedMessage());
-							e.printStackTrace();
+							shard = ArcOpShards.getUnchecked(index.getShardKey());
+						} catch (Exception e){
+							System.err.println("missed a ops shard, merged db? "+index.getShardKey());
 						}
 						if (shard == null) {
 							// Happens if shard has been deleted, indication
