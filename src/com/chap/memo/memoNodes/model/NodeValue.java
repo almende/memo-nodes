@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class NodeValue implements Serializable,Comparable<NodeValue> {
 
@@ -23,15 +24,20 @@ public class NodeValue implements Serializable,Comparable<NodeValue> {
 		this.value = value;
 		this.timestamp = timestamp.getTime();
 	}
-	
+
+	@JsonIgnore
 	public UUID getId() {
 		return id;
+	}
+	public String getIdString(){
+		return id.toString();
 	}
 
 	public byte[] getValue() {
 		return value;
 	}
 
+	@JsonIgnore
 	public Date getTimestamp() {
 		return new Date(timestamp);
 	}

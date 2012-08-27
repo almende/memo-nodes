@@ -3,13 +3,15 @@ package com.chap.memo.memoNodes.bus;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import com.chap.memo.memoNodes.MemoNode;
 import com.chap.memo.memoNodes.model.ArcOp;
@@ -22,6 +24,7 @@ import com.chap.memo.memoNodes.storage.MemoStorable;
 import com.chap.memo.memoNodes.storage.NodeValueIndex;
 import com.chap.memo.memoNodes.storage.NodeValueShard;
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
@@ -39,32 +42,32 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 public class MemoReadBus {
-
+	static final ObjectMapper om = new ObjectMapper();
 	LoadingCache<Key, NodeValueShard> NodeValueShards = CacheBuilder
-			.newBuilder().maximumWeight(1500000).weigher(new Weigher<Key,NodeValueShard>(){
+			.newBuilder().maximumWeight(15000000).weigher(new Weigher<Key,NodeValueShard>(){
 				public int weigh(Key key,NodeValueShard shard){
-					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
+//					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
 					return shard.getStoredSize();
 				}				
 			}).build(
 					new CacheLoader<Key, NodeValueShard>() {
 						public NodeValueShard load(Key key){
-							System.out.println("Need to load nv shard! ("+key+")");
+//							System.out.println("Need to load nv shard! ("+key+")");
 							NodeValueShard shard = (NodeValueShard) MemoStorable.load(key);
 							return shard;
 						}
 					}
 			);
 	LoadingCache<Key, ArcOpShard> ArcOpShards = CacheBuilder
-			.newBuilder().maximumWeight(1500000).weigher(new Weigher<Key,ArcOpShard>(){
+			.newBuilder().maximumWeight(15000000).weigher(new Weigher<Key,ArcOpShard>(){
 				public int weigh(Key key,ArcOpShard shard){
-					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
+//					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
 					return shard.getStoredSize();
 				}				
 			}).build(
 					new CacheLoader<Key, ArcOpShard>(){
 						public ArcOpShard load(Key key){
-							System.out.println("Need to load ops shard! ("+key+")");
+//							System.out.println("Need to load ops shard! ("+key+")");
 							return (ArcOpShard) MemoStorable.load(key);
 						}
 					}		
@@ -89,21 +92,36 @@ public class MemoReadBus {
 	public void exportDB(OutputStream out, boolean history) {
 		// Select export (first all, later history)
 		try {
-			ObjectOutputStream oos = new ObjectOutputStream(out);
+			ZipOutputStream zos = new ZipOutputStream(out);
+			zos.putNextEntry(new ZipEntry("values.json"));
+			OutputStreamWriter writer = new OutputStreamWriter(zos);
+			
+//			ObjectOutputStream oos = new ObjectOutputStream(out);
 			Query q = new Query("NodeValueShard");
 			PreparedQuery prep = datastore.prepare(q);
 			Iterator<Entity> iter = prep.asIterable().iterator();
+			writer.append("[");
+			boolean first = true;
 			while (iter.hasNext()) {
 				Entity ent = iter.next();
 				NodeValueShard shard = (NodeValueShard) MemoStorable.load(ent);
 				shard.initMultimaps();
 				Iterator<NodeValue> inner = shard.nodes.values().iterator();
 				while (inner.hasNext()) {
+					if (!first) writer.append(",");
+					first=false;
 					NodeValue nv = inner.next();
-					oos.writeObject(nv);
+					writer.append(om.writeValueAsString(nv));
 				}
 			}
+			writer.append("]");
+			writer.flush();
 			
+			zos.closeEntry();
+			zos.putNextEntry(new ZipEntry("arcs.json"));
+			
+			first=true;
+			writer.append("[");
 			q = new Query("ArcOpShard");
 			prep = datastore.prepare(q);
 			iter = prep.asIterable().iterator();
@@ -113,13 +131,19 @@ public class MemoReadBus {
 				shard.initMultimaps();
 				Iterator<ArcOp> inner = shard.parents.values().iterator();
 				while (inner.hasNext()) {
-					ArcOp nv = inner.next();
-					oos.writeObject(nv);
+					if (!first) writer.append(",");
+					first=false;
+					ArcOp ao = inner.next();
+					writer.append(om.writeValueAsString(ao));
 				}
 			}
-			// if history output, remove objkects
-			oos.flush();
-			oos.close();
+			writer.append("]");
+			writer.flush();
+			zos.closeEntry();
+			zos.flush();
+			zos.close();
+			out.flush();
+			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -139,14 +163,14 @@ public class MemoReadBus {
 	}
 
 	void loadIndexes(boolean clear) {
-		System.out.println("reloading indexes:" + clear);
-		long start = System.currentTimeMillis();
+//		System.out.println("reloading indexes:" + clear);
+//		long start = System.currentTimeMillis();
 
 		synchronized (NodeValueIndexes) {
 			synchronized (ArcOpIndexes) {
-				System.out.println("Started out with: nvi:"
-						+ NodeValueIndexes.size() + ";aoi:"
-						+ ArcOpIndexes.size());
+//				System.out.println("Started out with: nvi:"
+//						+ NodeValueIndexes.size() + ";aoi:"
+//						+ ArcOpIndexes.size());
 				if (clear) {
 					NodeValueIndexes.clear();
 					NodeValueShards.invalidateAll();
@@ -154,14 +178,14 @@ public class MemoReadBus {
 					ArcOpShards.invalidateAll();
 					lastValueChange = System.currentTimeMillis();
 					lastOpsChange = System.currentTimeMillis();
-					memCache.delete("memoNodes_lastUpdate");
+					lastIndexesRun = 0;
 				} else {
 					Object lastUpdate = memCache.get("memoNodes_lastUpdate");
 					if (lastUpdate != null) {
 						long lastUpdateTime = (Long) lastUpdate;
 						if (lastUpdateTime <= lastIndexesRun) {
-							System.out
-									.println("No update of indexes necessary");
+//							System.out
+//									.println("No update of indexes necessary");
 							return; // Nothing new to expect;
 						}
 					}
@@ -197,10 +221,10 @@ public class MemoReadBus {
 				}
 				lastIndexesRun = System.currentTimeMillis();
 
-				System.out.println("Done reloading indexes:"
-						+ (lastIndexesRun - start) + "ms nvi:"
-						+ NodeValueIndexes.size() + ";aoi:"
-						+ ArcOpIndexes.size());
+//				System.out.println("Done reloading indexes:"
+//						+ (lastIndexesRun - start) + "ms nvi:"
+//						+ NodeValueIndexes.size() + ";aoi:"
+//						+ ArcOpIndexes.size());
 			}
 		}
 	}
@@ -208,7 +232,7 @@ public class MemoReadBus {
 	public void compactDB() {
 		mergeNodeValueShards();
 		mergeArcOpShards();
-		memCache.put("memoNodes_lastUpdate", lastValueChange);
+		memCache.put("memoNodes_lastUpdate", System.currentTimeMillis());
 		loadIndexes(true);
 	}
 
@@ -216,16 +240,16 @@ public class MemoReadBus {
 		System.out.println("mergeNodeValueShards called!");
 		Query q = new Query("NodeValueShard").addSort("size",
 				Query.SortDirection.ASCENDING);
-		ArrayList<NodeValueShard> list = new ArrayList<NodeValueShard>(100);
+		ArrayList<NodeValueShard> list = new ArrayList<NodeValueShard>(500);
 		int size = 0;
 		PreparedQuery shardsQuery = datastore.prepare(q);
-		Iterator<Entity> iter = shardsQuery.asIterable(withLimit(100))
+		Iterator<Entity> iter = shardsQuery.asIterable(withLimit(500))
 				.iterator();
 		while (iter.hasNext()) {
 			Entity ent = iter.next();
 			System.out.println("Checking entity: " + ent.getProperty("size")
 					+ ":" + size);
-			if (size + (Long) ent.getProperty("size") <= NodeValueBuffer.SHARDSIZE) {
+			if (size + (Long) ent.getProperty("size") <= NodeValueBuffer.STORESIZE) {
 				size += (Long) ent.getProperty("size");
 				list.add((NodeValueShard) MemoStorable.load(ent));
 			} else {
@@ -262,7 +286,7 @@ public class MemoReadBus {
 			Entity ent = iter.next();
 			System.out.println("Checking entity: " + ent.getProperty("size")
 					+ ":" + size);
-			if (size + (Long) ent.getProperty("size") <= ArcOpBuffer.SHARDSIZE) {
+			if (size + (Long) ent.getProperty("size") <= ArcOpBuffer.STORESIZE) {
 				size += (Long) ent.getProperty("size");
 				list.add((ArcOpShard) MemoStorable.load(ent));
 			} else {
@@ -319,7 +343,7 @@ public class MemoReadBus {
 		return timestamp <= lastOpsChange;
 	}
 
-	public NodeValueShard getSparseNodeValueShard(int room) {
+	public NodeValueShard getSparseNodeValueShard(long room) {
 		NodeValueShard result = null;
 		Iterator<NodeValueShard> iter;
 		// synchronized(NodeValueShards){
@@ -329,9 +353,7 @@ public class MemoReadBus {
 			NodeValueShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.nodes == null)
-				shard.initMultimaps();
-			if (shard.nodes.size() < NodeValueBuffer.SHARDSIZE - room) {
+			if (shard.getStoredSize() < NodeValueBuffer.STORESIZE - room ){
 				result = shard;
 				break;
 			}
@@ -339,7 +361,7 @@ public class MemoReadBus {
 		return result;
 	}
 
-	public ArcOpShard getSparseArcOpShard(int room) {
+	public ArcOpShard getSparseArcOpShard(long room) {
 		ArcOpShard result = null;
 		Iterator<ArcOpShard> iter;
 		// synchronized(ArcOpShards){
@@ -349,9 +371,7 @@ public class MemoReadBus {
 			ArcOpShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.parents == null)
-				shard.initMultimaps();
-			if (shard.parents.size() < ArcOpBuffer.SHARDSIZE - room) {
+			if (shard.getStoredSize() < ArcOpBuffer.STORESIZE - room ){
 				result = shard;
 				break;
 			}

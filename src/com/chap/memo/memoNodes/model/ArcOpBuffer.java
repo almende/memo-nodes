@@ -9,7 +9,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 
 public class ArcOpBuffer {
-	public final static int SHARDSIZE = 30000;
+	public static final int STORESIZE = 1000000;
+	public static final int BYTESPEROP = 48;
 	MemoReadBus ReadBus;
 
 	public static final ArrayListMultimap<UUID, ArcOp> template = ArrayListMultimap
@@ -21,7 +22,7 @@ public class ArcOpBuffer {
 		synchronized (this) {
 			parents.put(ops.getParent(), ops);
 			children.put(ops.getChild(), ops);
-			if (parents.size() >= SHARDSIZE) {
+			if (parents.size()*BYTESPEROP >= STORESIZE) {
 				flush();
 			}
 		}
@@ -36,8 +37,8 @@ public class ArcOpBuffer {
 			}
 			// Get semi empty shard
 			ArcOpShard other = null;
-			if (SHARDSIZE - parents.size() > 0) {
-				other = ReadBus.getSparseArcOpShard(SHARDSIZE - parents.size());
+			if (STORESIZE - parents.size()*BYTESPEROP > 0) {
+				other = ReadBus.getSparseArcOpShard(STORESIZE - parents.size()*BYTESPEROP);
 			}
 			ArcOpShard shard = new ArcOpShard(this, other);
 			ArcOpIndex index = new ArcOpIndex(shard);

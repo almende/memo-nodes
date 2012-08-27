@@ -44,8 +44,8 @@ public class MemoServlet extends HttpServlet {
 			if (export != null){
 				MemoNode.flushDB();
 				MemoNode.compactDB();
-				resp.setHeader("Content-Disposition","attachment; filename=\"MemoNodes.dbe\"");
-				resp.setContentType("application/octet-stream");
+				resp.setHeader("Content-Disposition","attachment; filename=\"MemoNodes.zip\"");
+				resp.setContentType("application/zip");
 				MemoNode.exportDB(resp.getOutputStream());
 			}
 		} catch (Exception e) {

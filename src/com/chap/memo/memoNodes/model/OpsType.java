@@ -1,5 +1,5 @@
 package com.chap.memo.memoNodes.model;
 
-enum OpsType {
+public enum OpsType {
     ADD,DELETE 
 }

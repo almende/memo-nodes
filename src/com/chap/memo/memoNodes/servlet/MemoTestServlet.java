@@ -430,6 +430,7 @@ public class MemoTestServlet extends HttpServlet {
 			log(resp, (count == nofNodes), count + " children counted in:"
 					+ (new Date().getTime() - time.getTime()) + " ms");
 
+			MemoNode.flushDB();//To get a clean read setup!
 			time = new Date();
 			startNode.delete();
 			log(resp, true, " Nodes deleted again in:"
@@ -455,6 +456,7 @@ public class MemoTestServlet extends HttpServlet {
 				MemoNode newNode = new MemoNode(new Integer(i).toString());
 				AstartNode.addChild(newNode);
 			}
+			MemoNode.flushDB();//To get a clean read setup!
 			long atime = System.currentTimeMillis();
 			log(resp, true, "Storing done in: " + (atime - arcStart) + " ms");
 

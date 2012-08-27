@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ArcOp implements Serializable, Comparable<ArcOp> {
 	private static final long serialVersionUID = 3848738698324348856L;
@@ -32,7 +33,7 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		this.timestamp = timestamp.getTime();
 	}
 
-	ArcOp(OpsType type, UUID parent, UUID child, long timestamp) {
+	public ArcOp(OpsType type, UUID parent, UUID child, long timestamp) {
 		this.type = type;
 		this.uuid10 = parent.time;
 		this.uuid11 = parent.clockSeqAndNode;
@@ -66,16 +67,26 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 		return null;
 	}
 
+	@JsonIgnore
 	public UUID getParent() {
 		return new UUID(uuid10,uuid11);
 	}
 
+	@JsonIgnore
 	public UUID getChild() {
 		return new UUID(uuid20,uuid21);
 	}
 
+	@JsonIgnore
 	public Date getTimestamp() {
 		return new Date(timestamp);
+	}
+
+	public String getParentString(){
+		return getParent().toString();
+	}
+	public String getChildString(){
+		return getChild().toString();
 	}
 
 	public long getTimestamp_long() {

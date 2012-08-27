@@ -1,16 +1,22 @@
 package com.chap.memo.memoNodes.bus;
 
 import java.io.BufferedInputStream;
-import java.io.EOFException;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
+import com.chap.memo.memoNodes.bus.json.ImportArcOpDeserializer;
+import com.chap.memo.memoNodes.bus.json.ImportNodeValueDeserializer;
 import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.ArcOpBuffer;
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.chap.memo.memoNodes.model.NodeValueBuffer;
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
@@ -20,6 +26,7 @@ import com.google.appengine.api.datastore.Query;
 
 public class MemoWriteBus {
 	private final static MemoWriteBus bus = new MemoWriteBus();
+	static final ObjectMapper om = new ObjectMapper();
 	static final DatastoreService datastore = DatastoreServiceFactory
 			.getDatastoreService();
 	
@@ -65,22 +72,34 @@ public class MemoWriteBus {
 	}
 
 	public void importDB(InputStream in){
+		System.out.println("Importing DB!");
+		SimpleModule nvModule = new SimpleModule("NodeValueDeserializer", new Version(1, 0, 0, "alpha", null, null))
+		   .addDeserializer(NodeValue.class, new ImportNodeValueDeserializer());
+		om.registerModule(nvModule);
+		SimpleModule arcModule = new SimpleModule("ArcOpDeserializer", new Version(1, 0, 0, "alpha", null, null))
+		   .addDeserializer(ArcOp.class, new ImportArcOpDeserializer());
+		om.registerModule(arcModule);
 		BufferedInputStream bus = new  BufferedInputStream(in,15000);
-		ObjectInputStream ios;
+		ZipInputStream zis = new ZipInputStream(bus);
+		ZipEntry entry = null;
 		try {
-			ios = new ObjectInputStream(bus);
-			while (true){
-				Object elem = ios.readObject();
-				if (elem == null) break;
-				if (elem instanceof ArcOp) store((ArcOp)elem);
-				if (elem instanceof NodeValue) store((NodeValue)elem);
+			while ((entry = zis.getNextEntry()) != null){
+				if (entry.getName().equals("values.json")){
+					MappingIterator<NodeValue> iter= om.readValues(new JsonFactory().createJsonParser(zis), NodeValue.class);
+					while (iter.hasNext()){
+						this.store(iter.next());
+					}
+				}
+				if (entry.getName().equals("arcs.json")){
+					MappingIterator<ArcOp> iter = om.readValues(new JsonFactory().createJsonParser(zis), ArcOp.class);
+					while (iter.hasNext()){
+						this.store(iter.next());
+					}
+				}
 			}
-		} catch (EOFException eof){
-			System.out.println("Done importDB...");
-		} catch (IOException e) {
+		} catch (Exception e){
 			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			return;
 		}
 	}
 	

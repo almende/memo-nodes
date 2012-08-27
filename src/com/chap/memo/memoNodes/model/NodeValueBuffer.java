@@ -15,7 +15,8 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
 public class NodeValueBuffer {
-	public static final int SHARDSIZE = 30000;
+	public static final int STORESIZE = 1000000;
+
 	MemoReadBus ReadBus;
 
 	public static final ArrayListMultimap<UUID, NodeValue> template = ArrayListMultimap
@@ -24,7 +25,8 @@ public class NodeValueBuffer {
 			.synchronizedListMultimap(ArrayListMultimap.create(template));
 	long oldest = 0;
 	long newest = 0;
-
+	long size = 0;
+	
 	public void store(NodeValue nodeVal) {
 		synchronized (this) {
 			nodes.put(nodeVal.getId(), nodeVal);
@@ -32,7 +34,8 @@ public class NodeValueBuffer {
 				newest = nodeVal.getTimestamp_long();
 			if (oldest == 0 || nodeVal.getTimestamp_long() < oldest)
 				oldest = nodeVal.getTimestamp_long();
-			if (nodes.size() >= SHARDSIZE) {
+			if ((size+=(nodeVal.getValue().length+48)) >= STORESIZE) {
+				System.out.println("Size grown to:"+size+", flushing!");
 				flush();
 			}
 
@@ -41,15 +44,15 @@ public class NodeValueBuffer {
 
 	public void flush() {
 		synchronized (this) {
-			if (nodes.size() == 0)
+			if (size == 0)
 				return;
 			if (ReadBus == null) {
 				ReadBus = MemoReadBus.getBus();
 			}
 			NodeValueShard other = null;
-			if (SHARDSIZE - nodes.size() > 0) {
-				other = ReadBus.getSparseNodeValueShard(SHARDSIZE
-						- nodes.size());
+			if (STORESIZE - size > 0) {
+				other = ReadBus.getSparseNodeValueShard(STORESIZE
+						- size);
 			}
 			NodeValueShard shard = new NodeValueShard(this, other);
 			NodeValueIndex index = new NodeValueIndex(shard);
@@ -63,11 +66,13 @@ public class NodeValueBuffer {
 				other.delete();
 			}
 			this.nodes.clear();
+			size=0;
 		}
 	}
 
 	public ImmutableList<NodeValue> findAll(UUID id) {
 		synchronized (this) {
+			if (size == 0) return null;
 			List<NodeValue> list = nodes.get(id);
 			if (list != null && !list.isEmpty()) {
 				Collections.sort(list);
@@ -88,6 +93,7 @@ public class NodeValueBuffer {
 
 	public NodeValue findBefore(UUID id, long timestamp_long) {
 		synchronized (this) {
+			if (size == 0) return null;
 			if (timestamp_long < oldest)
 				return null; // shortcut, will probably not be used...
 

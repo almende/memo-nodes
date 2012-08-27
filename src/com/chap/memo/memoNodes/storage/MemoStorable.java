@@ -64,6 +64,7 @@ public abstract class MemoStorable implements Serializable,
 			// zos.setLevel(4);
 			zos.putNextEntry(new ZipEntry("Object"));
 			ObjectOutputStream oos = new ObjectOutputStream(zos);
+//			oos.writeInt(1);
 			oos.writeObject(this);
 			oos.flush();
 			oos.reset();
@@ -80,15 +81,17 @@ public abstract class MemoStorable implements Serializable,
 		}
 		return result;
 	}
-	private static MemoStorable _unserialize(byte[] data) {
+	private static MemoStorable _unserialize(byte[] data, int size) {
 		MemoStorable result = null;
 		ByteArrayInputStream bis = new ByteArrayInputStream(data);
+		
 		try {
-//			GZIPInputStream zis = new GZIPInputStream(bis,1000000);
 			ZipInputStream zis = new ZipInputStream(bis);
 			zis.getNextEntry();
-			BufferedInputStream bus = new  BufferedInputStream(zis,15000);
+			BufferedInputStream bus = new BufferedInputStream(zis,size>0?size:1500000);
 			ObjectInputStream ios = new ObjectInputStream(bus);
+//			ios.readInt();
+//			System.out.println("Non-blocking available: "+bis.available()+":"+zis.available()+":"+bus.available());
 			result = (MemoStorable) ios.readObject();
 			zis.closeEntry();
 			bis.reset();
@@ -193,7 +196,7 @@ public abstract class MemoStorable implements Serializable,
 		if (next != null)
 			ent.setUnindexedProperty("next", next);
 		ent.setProperty("timestamp", this.storeTime);
-		ent.setProperty("size", this.getSize());
+		ent.setProperty("size", length);
 		datastore.put(ent);
 //		counter++;
 		myKey = ent.getKey();
@@ -212,9 +215,11 @@ public abstract class MemoStorable implements Serializable,
 //		long start = System.currentTimeMillis();
 		byte[] result;
 		Key key = ent.getKey();
+		int size=0;
 //		int count=0;
 		try {
 			Blob blob = (Blob) ent.getProperty("payload");
+			size = (int)((Long) ent.getProperty("size")%Integer.MAX_VALUE);
 			byte[] data = blob.getBytes();
 			result = Arrays.copyOf(data, data.length);
 //			count++;
@@ -232,7 +237,7 @@ public abstract class MemoStorable implements Serializable,
 			e.printStackTrace();
 			return null;
 		}
-		MemoStorable res = _unserialize(result);
+		MemoStorable res = _unserialize(result,size);
 		res.storedSize=result.length;
 		if (res != null) res.myKey = key;
 		return res;
