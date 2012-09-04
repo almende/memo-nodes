@@ -852,7 +852,7 @@ public class MemoReadBus {
 							result.ensureCapacity(children.size() + 1);
 							for (ArcOp op : children) {
 								if (!op.getChild().equals(uuid))
-									continue;
+									continue; //Due to indexing on timestamps, some non-equal uuids ops may be returned!
 								if (op.getTimestamp_long() <= timestamp) {
 									result.add(op);
 								}
@@ -890,7 +890,7 @@ public class MemoReadBus {
 							result.ensureCapacity(parents.size() + 1);
 							for (ArcOp op : parents) {
 								if (!op.getParent().equals(uuid))
-									continue;
+									continue;//Due to indexing on timestamps, some non-equal uuids ops may be returned!
 								if (op.getTimestamp_long() <= timestamp) {
 									result.add(op);
 								}
