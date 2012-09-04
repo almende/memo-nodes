@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -18,6 +20,7 @@ import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.ArcOpBuffer;
 import com.chap.memo.memoNodes.model.NodeValue;
 import com.chap.memo.memoNodes.model.NodeValueBuffer;
+import com.chap.memo.memoNodes.model.OpsType;
 import com.chap.memo.memoNodes.storage.ArcOpIndex;
 import com.chap.memo.memoNodes.storage.ArcOpShard;
 import com.chap.memo.memoNodes.storage.MemoStorable;
@@ -38,40 +41,41 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 public class MemoReadBus {
 	static final ObjectMapper om = new ObjectMapper();
+	long maxWeight = Runtime.getRuntime().maxMemory() / 4;
 	LoadingCache<Key, NodeValueShard> NodeValueShards = CacheBuilder
-			.newBuilder().maximumWeight(15000000).weigher(new Weigher<Key,NodeValueShard>(){
-				public int weigh(Key key,NodeValueShard shard){
-//					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
-					return shard.getStoredSize();
-				}				
-			}).build(
-					new CacheLoader<Key, NodeValueShard>() {
-						public NodeValueShard load(Key key){
-//							System.out.println("Need to load nv shard! ("+key+")");
-							NodeValueShard shard = (NodeValueShard) MemoStorable.load(key);
-							return shard;
-						}
-					}
-			);
-	LoadingCache<Key, ArcOpShard> ArcOpShards = CacheBuilder
-			.newBuilder().maximumWeight(15000000).weigher(new Weigher<Key,ArcOpShard>(){
-				public int weigh(Key key,ArcOpShard shard){
-//					System.out.println("Shard is "+shard.getStoredSize()+" bytes");
-					return shard.getStoredSize();
-				}				
-			}).build(
-					new CacheLoader<Key, ArcOpShard>(){
-						public ArcOpShard load(Key key){
-//							System.out.println("Need to load ops shard! ("+key+")");
-							return (ArcOpShard) MemoStorable.load(key);
-						}
-					}		
-			);
+			.newBuilder().concurrencyLevel(1).maximumWeight(maxWeight)
+			.weigher(new Weigher<Key, NodeValueShard>() {
+				public int weigh(Key key, NodeValueShard shard) {
+					// System.out.println("NodeValue Shard is "+shard.getSize()+"/"+shard.getStoredSize()+" bytes ("+(shard.getStoredSize()*100)/shard.getSize()+"%)");
+					return shard.getSize();
+				}
+			}).build(new CacheLoader<Key, NodeValueShard>() {
+				public NodeValueShard load(Key key) {
+					// System.out.println("Need to load nv shard! ("+key+")");
+					NodeValueShard shard = (NodeValueShard) MemoStorable
+							.load(key);
+					return shard;
+				}
+			});
+	LoadingCache<Key, ArcOpShard> ArcOpShards = CacheBuilder.newBuilder()
+			.concurrencyLevel(1).maximumWeight(maxWeight)
+			.weigher(new Weigher<Key, ArcOpShard>() {
+				public int weigh(Key key, ArcOpShard shard) {
+					// System.out.println("ArcOp Shard is "+shard.getSize()+"/"+shard.getStoredSize()+" bytes ("+(shard.getStoredSize()*100)/shard.getSize()+"%)");
+					return shard.getSize();
+				}
+			}).build(new CacheLoader<Key, ArcOpShard>() {
+				public ArcOpShard load(Key key) {
+					// System.out.println("Need to load ops shard! ("+key+")");
+					return (ArcOpShard) MemoStorable.load(key);
+				}
+			});
 
 	public List<NodeValueIndex> NodeValueIndexes = new ArrayList<NodeValueIndex>(
 			100);
@@ -89,61 +93,283 @@ public class MemoReadBus {
 		loadIndexes(false);
 	};
 
-	public void exportDB(OutputStream out, boolean history) {
-		// Select export (first all, later history)
-		try {
-			ZipOutputStream zos = new ZipOutputStream(out);
-			zos.putNextEntry(new ZipEntry("values.json"));
-			OutputStreamWriter writer = new OutputStreamWriter(zos);
-			
-//			ObjectOutputStream oos = new ObjectOutputStream(out);
+	public void dropHistory() {
+		synchronized (NodeValueIndexes) {
+			HashMap<UUID, NodeValue> newestNodeValues = new HashMap<UUID, NodeValue>(
+					100000);
+
+			// ObjectOutputStream oos = new ObjectOutputStream(out);
 			Query q = new Query("NodeValueShard");
 			PreparedQuery prep = datastore.prepare(q);
 			Iterator<Entity> iter = prep.asIterable().iterator();
-			writer.append("[");
-			boolean first = true;
 			while (iter.hasNext()) {
 				Entity ent = iter.next();
 				NodeValueShard shard = (NodeValueShard) MemoStorable.load(ent);
 				shard.initMultimaps();
 				Iterator<NodeValue> inner = shard.nodes.values().iterator();
 				while (inner.hasNext()) {
-					if (!first) writer.append(",");
-					first=false;
 					NodeValue nv = inner.next();
-					writer.append(om.writeValueAsString(nv));
+					if (newestNodeValues.containsKey(nv.getId())) {
+						NodeValue other = newestNodeValues.get(nv.getId());
+						if (other.compareTo(nv) < 0) { // other older
+														// than current?
+							newestNodeValues.put(nv.getId(), nv);
+							nv = other; // export other, i.s.o. current
+						}
+					} else {
+						newestNodeValues.put(nv.getId(), nv);
+					}
 				}
 			}
-			writer.append("]");
-			writer.flush();
-			
-			zos.closeEntry();
-			zos.putNextEntry(new ZipEntry("arcs.json"));
-			
-			first=true;
-			writer.append("[");
-			q = new Query("ArcOpShard");
-			prep = datastore.prepare(q);
-			iter = prep.asIterable().iterator();
+
+			if (newestNodeValues.size() > 0) {
+				NodeValue[] list = newestNodeValues.values().toArray(
+						new NodeValue[0]);
+				Arrays.sort(list);
+
+				MemoWriteBus writeBus = MemoWriteBus.getBus();
+				MemoWriteBus.emptyDB(new String[] { "NodeValueIndex",
+						"NodeValueShard" });
+				for (NodeValue val : list) {
+					if (val.getValue().length >= 0) {
+						writeBus.store(val);
+					}
+				}
+				MemoNode.flushDB();
+				loadIndexes(true);
+			}
+		}
+		synchronized (ArcOpIndexes) {
+			ArrayListMultimap<Long, ArcOp> newestArcOps = ArrayListMultimap
+					.create();
+			Query q = new Query("ArcOpShard");
+			PreparedQuery prep = datastore.prepare(q);
+			Iterator<Entity> iter = prep.asIterable().iterator();
 			while (iter.hasNext()) {
 				Entity ent = iter.next();
 				ArcOpShard shard = (ArcOpShard) MemoStorable.load(ent);
 				shard.initMultimaps();
 				Iterator<ArcOp> inner = shard.parents.values().iterator();
 				while (inner.hasNext()) {
-					if (!first) writer.append(",");
-					first=false;
 					ArcOp ao = inner.next();
-					writer.append(om.writeValueAsString(ao));
+					List<ArcOp> res = newestArcOps.removeAll(ao
+							.getTimestamp_long());
+					if (res.size() > 0) {
+						List<ArcOp> newList = new ArrayList<ArcOp>(res.size());
+						for (ArcOp other : res) {
+							if (other.getChild().equals(ao.getChild())
+									&& other.getParent().equals(ao.getParent())) {
+								if (other.compareTo(ao) < 0) { // other
+																// older
+																// than
+																// current?
+									ArcOp tmp = other; // swap
+									other = ao;
+									ao = tmp;
+								}
+							}
+							newList.add(other);
+						}
+						newList.add(ao);
+						newestArcOps.putAll(ao.getTimestamp_long(), newList);
+					} else {
+						newestArcOps.put(ao.getTimestamp_long(), ao);
+					}
 				}
 			}
-			writer.append("]");
-			writer.flush();
-			zos.closeEntry();
-			zos.flush();
-			zos.close();
-			out.flush();
-			out.close();
+			if (newestArcOps.size() > 0) {
+				ArcOp[] list = newestArcOps.values().toArray(new ArcOp[0]);
+				Arrays.sort(list);
+
+				MemoWriteBus writeBus = MemoWriteBus.getBus();
+				MemoWriteBus
+						.emptyDB(new String[] { "ArcOpIndex", "ArcOpShard" });
+				for (ArcOp val : list) {
+					if (val.getType().equals(OpsType.ADD)) {
+						writeBus.store(val);
+					}
+				}
+				MemoNode.flushDB();
+				loadIndexes(true);
+			}
+		}
+	}
+
+	public void exportDB(OutputStream out, boolean history) {
+		// Select export (first all, later history)
+		try {
+			ZipOutputStream zos = new ZipOutputStream(out);
+			OutputStreamWriter writer = new OutputStreamWriter(zos);
+			int count = 0;
+
+			synchronized (NodeValueIndexes) {
+
+				zos.putNextEntry(new ZipEntry("values.json"));
+				HashMap<UUID, NodeValue> newestNodeValues = new HashMap<UUID, NodeValue>(
+						100000);
+
+				// ObjectOutputStream oos = new ObjectOutputStream(out);
+				Query q = new Query("NodeValueShard");
+				PreparedQuery prep = datastore.prepare(q);
+				Iterator<Entity> iter = prep.asIterable().iterator();
+				writer.append("[");
+
+				while (iter.hasNext()) {
+					Entity ent = iter.next();
+					NodeValueShard shard = (NodeValueShard) MemoStorable
+							.load(ent);
+					shard.initMultimaps();
+					Iterator<NodeValue> inner = shard.nodes.values().iterator();
+					while (inner.hasNext()) {
+						boolean export = true;
+						NodeValue nv = inner.next();
+						if (history) {
+							if (newestNodeValues.containsKey(nv.getId())) {
+								NodeValue other = newestNodeValues.get(nv
+										.getId());
+								if (other.compareTo(nv) < 0) { // other older
+																// than current?
+									newestNodeValues.put(nv.getId(), nv);
+									nv = other; // export other, i.s.o. current
+								}
+							} else {
+								newestNodeValues.put(nv.getId(), nv);
+								export = false;
+							}
+						}
+						if (export) {
+							if (count > 0)
+								writer.append(",");
+							count++;
+							writer.append(om.writeValueAsString(nv));
+						}
+					}
+				}
+
+				if (history && newestNodeValues.size() > 0) {
+					int oldcount = count;
+					NodeValue[] list = newestNodeValues.values().toArray(
+							new NodeValue[0]);
+					Arrays.sort(list);
+
+					MemoWriteBus writeBus = MemoWriteBus.getBus();
+					MemoWriteBus.emptyDB(new String[] { "NodeValueIndex",
+							"NodeValueShard" });
+					for (NodeValue val : list) {
+						if (val.getValue().length >= 0) {
+							writeBus.store(val);
+						} else {
+							if (count > 0)
+								writer.append(",");
+							count++;
+							writer.append(om.writeValueAsString(val));
+						}
+					}
+					System.out.println("Kept:"
+							+ (newestNodeValues.size() - (count - oldcount))
+							+ " nodeValues");
+					MemoNode.flushDB();
+					loadIndexes(true);
+				}
+				writer.append("]");
+				writer.flush();
+				zos.closeEntry();
+				System.out.println("Exported:" + count + " nodeValues");
+			}
+			synchronized (ArcOpIndexes) {
+				zos.putNextEntry(new ZipEntry("arcs.json"));
+
+				ArrayListMultimap<Long, ArcOp> newestArcOps = ArrayListMultimap
+						.create();
+
+				count = 0;
+				writer.append("[");
+				Query q = new Query("ArcOpShard");
+				PreparedQuery prep = datastore.prepare(q);
+				Iterator<Entity> iter = prep.asIterable().iterator();
+				while (iter.hasNext()) {
+					Entity ent = iter.next();
+					ArcOpShard shard = (ArcOpShard) MemoStorable.load(ent);
+					shard.initMultimaps();
+					Iterator<ArcOp> inner = shard.parents.values().iterator();
+					while (inner.hasNext()) {
+						boolean export = true;
+						ArcOp ao = inner.next();
+						if (history) {
+							List<ArcOp> res = newestArcOps.removeAll(ao
+									.getTimestamp_long());
+							if (res.size() > 0) {
+								List<ArcOp> newList = new ArrayList<ArcOp>(
+										res.size());
+								boolean found = false;
+								for (ArcOp other : res) {
+									if (other.getChild().equals(ao.getChild())
+											&& other.getParent().equals(
+													ao.getParent())) {
+										if (other.compareTo(ao) < 0) { // other
+																		// older
+																		// than
+																		// current?
+											ArcOp tmp = other; // swap
+											other = ao;
+											ao = tmp;
+										}
+										found = true;
+									}
+									newList.add(other);
+								}
+								if (!found) {
+									export = false;
+								}
+								newList.add(ao);
+								newestArcOps.putAll(ao.getTimestamp_long(),
+										newList);
+							} else {
+								newestArcOps.put(ao.getTimestamp_long(), ao);
+								export = false;
+							}
+						}
+						if (export) {
+							if (count > 0)
+								writer.append(",");
+							count++;
+							writer.append(om.writeValueAsString(ao));
+						}
+					}
+				}
+				if (history && newestArcOps.size() > 0) {
+					ArcOp[] list = newestArcOps.values().toArray(new ArcOp[0]);
+					Arrays.sort(list);
+
+					MemoWriteBus writeBus = MemoWriteBus.getBus();
+					MemoWriteBus.emptyDB(new String[] { "ArcOpIndex",
+							"ArcOpShard" });
+					for (ArcOp val : list) {
+						if (val.getType().equals(OpsType.ADD)) {
+							writeBus.store(val);
+						} else {
+							if (count > 0)
+								writer.append(",");
+							count++;
+							writer.append(om.writeValueAsString(val));
+						}
+					}
+					System.out.println("Kept:" + newestArcOps.values().size()
+							+ " ArcOps");
+					MemoNode.flushDB();
+					loadIndexes(true);
+
+				}
+
+				writer.append("]");
+				writer.flush();
+				zos.closeEntry();
+				zos.flush();
+				zos.close();
+				out.flush();
+				out.close();
+				System.out.println("Exported:" + count + " ArcOps");
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -163,14 +389,14 @@ public class MemoReadBus {
 	}
 
 	void loadIndexes(boolean clear) {
-//		System.out.println("reloading indexes:" + clear);
-//		long start = System.currentTimeMillis();
+		// System.out.println("reloading indexes:" + clear);
+		// long start = System.currentTimeMillis();
 
 		synchronized (NodeValueIndexes) {
 			synchronized (ArcOpIndexes) {
-//				System.out.println("Started out with: nvi:"
-//						+ NodeValueIndexes.size() + ";aoi:"
-//						+ ArcOpIndexes.size());
+				// System.out.println("Started out with: nvi:"
+				// + NodeValueIndexes.size() + ";aoi:"
+				// + ArcOpIndexes.size());
 				if (clear) {
 					NodeValueIndexes.clear();
 					NodeValueShards.invalidateAll();
@@ -184,8 +410,8 @@ public class MemoReadBus {
 					if (lastUpdate != null) {
 						long lastUpdateTime = (Long) lastUpdate;
 						if (lastUpdateTime <= lastIndexesRun) {
-//							System.out
-//									.println("No update of indexes necessary");
+							// System.out
+							// .println("No update of indexes necessary");
 							return; // Nothing new to expect;
 						}
 					}
@@ -221,10 +447,10 @@ public class MemoReadBus {
 				}
 				lastIndexesRun = System.currentTimeMillis();
 
-//				System.out.println("Done reloading indexes:"
-//						+ (lastIndexesRun - start) + "ms nvi:"
-//						+ NodeValueIndexes.size() + ";aoi:"
-//						+ ArcOpIndexes.size());
+				// System.out.println("Done reloading indexes:"
+				// + (lastIndexesRun - start) + "ms nvi:"
+				// + NodeValueIndexes.size() + ";aoi:"
+				// + ArcOpIndexes.size());
 			}
 		}
 	}
@@ -257,6 +483,7 @@ public class MemoReadBus {
 			}
 		}
 		if (list.size() > 1) {
+			loadIndexes(false);
 			System.out.println("Merge " + list.size() + " NodeValueShards!");
 			NodeValueShard shard = new NodeValueShard(
 					list.toArray(new NodeValueShard[0]));
@@ -294,6 +521,7 @@ public class MemoReadBus {
 			}
 		}
 		if (list.size() > 1) {
+			loadIndexes(false);
 			System.out.println("Merge " + list.size() + " ArcOpShards!");
 			ArcOpShard shard = new ArcOpShard(list.toArray(new ArcOpShard[0]));
 			ArcOpIndex index = new ArcOpIndex(shard);
@@ -353,7 +581,7 @@ public class MemoReadBus {
 			NodeValueShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.getStoredSize() < NodeValueBuffer.STORESIZE - room ){
+			if (shard.getStoredSize() < NodeValueBuffer.STORESIZE - room) {
 				result = shard;
 				break;
 			}
@@ -371,7 +599,7 @@ public class MemoReadBus {
 			ArcOpShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.getStoredSize() < ArcOpBuffer.STORESIZE - room ){
+			if (shard.getStoredSize() < ArcOpBuffer.STORESIZE - room) {
 				result = shard;
 				break;
 			}
@@ -443,11 +671,12 @@ public class MemoReadBus {
 		while (iter.hasNext()) {
 			NodeValueIndex index = iter.next();
 			if (index.contains(uuid)) {
-				NodeValueShard shard=null;
+				NodeValueShard shard = null;
 				try {
 					shard = NodeValueShards.getUnchecked(index.getShardKey());
-				} catch (Exception e){
-					System.err.println("missed a ops shard, merged db? "+index.getShardKey());
+				} catch (Exception e) {
+					System.err.println("missed a ops shard, merged db? "
+							+ index.getShardKey());
 				}
 				if (shard == null) {
 					// Happens if shard has been deleted, indication that
@@ -499,13 +728,13 @@ public class MemoReadBus {
 					&& index.getNewest() < result.getTimestamp_long()) {
 				return result;
 			}
-			if (index.getOldest() < timestamp
-					&& index.contains(uuid)) {
-				NodeValueShard shard=null;
+			if (index.getOldest() < timestamp && index.contains(uuid)) {
+				NodeValueShard shard = null;
 				try {
 					shard = NodeValueShards.getUnchecked(index.getShardKey());
-				} catch (Exception e){
-					System.err.println("missed a ops shard, merged db? "+index.getShardKey());
+				} catch (Exception e) {
+					System.err.println("missed a ops shard, merged db? "
+							+ index.getShardKey());
 				}
 				if (shard == null) {
 					// Happens if shard has been deleted, indication
@@ -594,11 +823,14 @@ public class MemoReadBus {
 				switch (type) {
 				case 0: // parentList, UUID is child
 					if (index.containsChild(uuid)) {
-						ArcOpShard shard=null;
+						ArcOpShard shard = null;
 						try {
-							shard = ArcOpShards.getUnchecked(index.getShardKey());
-						} catch (Exception e){
-							System.err.println("missed a ops shard, merged db? "+index.getShardKey());
+							shard = ArcOpShards.getUnchecked(index
+									.getShardKey());
+						} catch (Exception e) {
+							System.err
+									.println("missed a ops shard, merged db? "
+											+ index.getShardKey());
 						}
 						if (shard == null) {
 							// Happens if shard has been deleted, indication
@@ -619,6 +851,8 @@ public class MemoReadBus {
 							List<ArcOp> children = shard.getChildOps(uuid);
 							result.ensureCapacity(children.size() + 1);
 							for (ArcOp op : children) {
+								if (!op.getChild().equals(uuid))
+									continue;
 								if (op.getTimestamp_long() <= timestamp) {
 									result.add(op);
 								}
@@ -628,11 +862,14 @@ public class MemoReadBus {
 					break;
 				case 1: // parentList, UUID is child
 					if (index.containsParent(uuid)) {
-						ArcOpShard shard=null;
+						ArcOpShard shard = null;
 						try {
-							shard = ArcOpShards.getUnchecked(index.getShardKey());
-						} catch (Exception e){
-							System.err.println("missed a ops shard, merged db? "+index.getShardKey());
+							shard = ArcOpShards.getUnchecked(index
+									.getShardKey());
+						} catch (Exception e) {
+							System.err
+									.println("missed a ops shard, merged db? "
+											+ index.getShardKey());
 						}
 						if (shard == null) {
 							// Happens if shard has been deleted, indication
@@ -652,6 +889,8 @@ public class MemoReadBus {
 							List<ArcOp> parents = shard.getParentOps(uuid);
 							result.ensureCapacity(parents.size() + 1);
 							for (ArcOp op : parents) {
+								if (!op.getParent().equals(uuid))
+									continue;
 								if (op.getTimestamp_long() <= timestamp) {
 									result.add(op);
 								}

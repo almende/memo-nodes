@@ -16,7 +16,7 @@ public class MemoServlet extends HttpServlet {
 		
 		String input = req.getParameter("import");
 		if (input != null){
-			MemoNode.emptyDB();
+			if (req.getParameter("history") == null) MemoNode.emptyDB();
 			MemoNode.importDB(req.getInputStream());
 			MemoNode.flushDB();
 		} else {
@@ -40,13 +40,23 @@ public class MemoServlet extends HttpServlet {
 				resp.setContentType("text/plain");
 				resp.getWriter().append("database cleared!\n");
 			}
+			String dropHistory = req.getParameter("dropHistory");
+			if (dropHistory != null){
+				MemoNode.dropHistory();
+				resp.setContentType("text/plain");
+				resp.getWriter().append("History cleared!\n");
+			}
 			String export = req.getParameter("export");
 			if (export != null){
 				MemoNode.flushDB();
 				MemoNode.compactDB();
 				resp.setHeader("Content-Disposition","attachment; filename=\"MemoNodes.zip\"");
 				resp.setContentType("application/zip");
-				MemoNode.exportDB(resp.getOutputStream());
+				if (req.getParameter("history") == null){
+					MemoNode.exportDB(resp.getOutputStream());	
+				} else {
+					MemoNode.purgeHistory(resp.getOutputStream());
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -17,18 +17,18 @@ public final class ArcOpIndex extends MemoStorable {
 	
 	//Deep copy constructor
 	public ArcOpIndex(ArcOpShard ops) {
-		Set<UUID> parentsSet = ops.parents.keySet();
-		Set<UUID> childrenSet = ops.children.keySet();
+		Set<Long> parentsSet = ops.parents.keySet();
+		Set<Long> childrenSet = ops.children.keySet();
 		parentArray = new long[parentsSet.size()];
 		int i=0;
-		for (UUID parent: parentsSet){
-			parentArray[i++]=parent.time;
+		for (Long parent: parentsSet){
+			parentArray[i++]=parent;
 		}
 		Arrays.sort(parentArray);
 		childrenArray = new long[childrenSet.size()];
 		i=0;
-		for (UUID child: childrenSet){
-			childrenArray[i++]=child.time;
+		for (Long child: childrenSet){
+			childrenArray[i++]=child;
 		}
 		Arrays.sort(childrenArray);
 		shardKey = ops.store("ArcOpShard");

@@ -20,7 +20,8 @@ public final class NodeValueShard extends MemoStorable {
 	long newest = 0;
 	NodeValue[] nodeArray;
 	
-	public transient ImmutableListMultimap<UUID,NodeValue> nodes=null;
+	public transient ImmutableListMultimap<Long,NodeValue> nodes=null;
+	transient int size=1;
 	transient boolean init=false;
 	/*
 	 * Constructor for merging set of shards
@@ -63,9 +64,10 @@ public final class NodeValueShard extends MemoStorable {
 	
 	public void initMultimaps(){
 		if (!init){
-			ImmutableListMultimap.Builder<UUID,NodeValue> nodesBuilder = new ImmutableListMultimap.Builder<UUID,NodeValue>();
+			ImmutableListMultimap.Builder<Long,NodeValue> nodesBuilder = new ImmutableListMultimap.Builder<Long,NodeValue>();
 			for (NodeValue nv: Arrays.asList(nodeArray)){
-				nodesBuilder.put(nv.getId(),nv);
+				size+=nv.getValue().length;
+				nodesBuilder.put(nv.getId().time,nv);
 			}
 			nodes = nodesBuilder.build();
 			init=true;
@@ -73,7 +75,11 @@ public final class NodeValueShard extends MemoStorable {
 	}
 
 	public ImmutableList<NodeValue> findAll(UUID id) {
-		return nodes.get(id);
+		ImmutableList<NodeValue> list = nodes.get(id.time);
+		for (NodeValue val: list){
+			if (!val.getId().equals(id)) list.remove(val);
+		}
+		return ImmutableList.copyOf(list);
 	}
 
 	public NodeValue find(UUID id) {
@@ -89,12 +95,13 @@ public final class NodeValueShard extends MemoStorable {
 		if (timestamp_long < oldest)
 			return null; // shortcut, will probably not be used...
 
-		List<NodeValue> res=nodes.get(id);
+		List<NodeValue> res=nodes.get(id.time);
 		if (res != null && !res.isEmpty()) {		
 			NodeValue result = null;
 			Iterator<NodeValue> iter = res.iterator();
 			while (iter.hasNext()) {
 				NodeValue next = iter.next();
+				if (!next.getId().equals(id)) continue;
 				if (next.getTimestamp_long() <= timestamp_long) {
 					if (result == null
 							|| next.getTimestamp_long() >= result
@@ -117,6 +124,8 @@ public final class NodeValueShard extends MemoStorable {
 	}
 	@Override
 	public int getSize(){
-		return nodeArray.length;
+		initMultimaps();
+		return this.size;
 	}
+	
 }

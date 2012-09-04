@@ -72,6 +72,18 @@ public class MemoNode implements Comparable<MemoNode> {
 		MemoReadBus.getBus().exportDB(out,false);
 	}
 	/**
+	 * Export and remove historical nodes, leaving only current values 
+	 */
+	public static void purgeHistory(OutputStream out){
+		MemoReadBus.getBus().exportDB(out, true);
+	}
+	/**
+	 * Export and remove historical nodes, leaving only current values 
+	 */
+	public static void dropHistory(){
+		MemoReadBus.getBus().dropHistory();
+	}
+	/**
 	 * import the given byte array as subgraph, HOW?
 	 */
 	public static void importDB(InputStream in){

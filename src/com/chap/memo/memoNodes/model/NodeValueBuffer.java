@@ -15,13 +15,14 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
 public class NodeValueBuffer {
-	public static final int STORESIZE = 1000000;
+	public static final int STORESIZE = 250000;
+	public static final int COMPRESSION_RATIO = 8;
 
 	MemoReadBus ReadBus;
 
-	public static final ArrayListMultimap<UUID, NodeValue> template = ArrayListMultimap
+	public static final ArrayListMultimap<Long, NodeValue> template = ArrayListMultimap
 			.create();
-	public transient ListMultimap<UUID, NodeValue> nodes = Multimaps
+	public transient ListMultimap<Long, NodeValue> nodes = Multimaps
 			.synchronizedListMultimap(ArrayListMultimap.create(template));
 	long oldest = 0;
 	long newest = 0;
@@ -29,13 +30,13 @@ public class NodeValueBuffer {
 	
 	public void store(NodeValue nodeVal) {
 		synchronized (this) {
-			nodes.put(nodeVal.getId(), nodeVal);
+			nodes.put(nodeVal.getId().time, nodeVal);
 			if (newest == 0 || nodeVal.getTimestamp_long() > newest)
 				newest = nodeVal.getTimestamp_long();
 			if (oldest == 0 || nodeVal.getTimestamp_long() < oldest)
 				oldest = nodeVal.getTimestamp_long();
-			if ((size+=(nodeVal.getValue().length+48)) >= STORESIZE) {
-				System.out.println("Size grown to:"+size+", flushing!");
+			if ((size+=(nodeVal.getValue().length+48)) >= STORESIZE*COMPRESSION_RATIO) {
+//				System.out.println("Size grown to:"+size+", flushing!");
 				flush();
 			}
 
@@ -51,8 +52,8 @@ public class NodeValueBuffer {
 			}
 			NodeValueShard other = null;
 			if (STORESIZE - size > 0) {
-				other = ReadBus.getSparseNodeValueShard(STORESIZE
-						- size);
+				other = ReadBus.getSparseNodeValueShard((STORESIZE
+						- size)*COMPRESSION_RATIO);
 			}
 			NodeValueShard shard = new NodeValueShard(this, other);
 			NodeValueIndex index = new NodeValueIndex(shard);
@@ -73,9 +74,12 @@ public class NodeValueBuffer {
 	public ImmutableList<NodeValue> findAll(UUID id) {
 		synchronized (this) {
 			if (size == 0) return null;
-			List<NodeValue> list = nodes.get(id);
+			List<NodeValue> list = nodes.get(id.time);
 			if (list != null && !list.isEmpty()) {
 				Collections.sort(list);
+				for (NodeValue nv: list){
+					if (!nv.getId().equals(id)) list.remove(nv);
+				}
 				return ImmutableList.copyOf(list);
 			} else {
 				return new ImmutableList.Builder<NodeValue>().build();
@@ -97,13 +101,14 @@ public class NodeValueBuffer {
 			if (timestamp_long < oldest)
 				return null; // shortcut, will probably not be used...
 
-			List<NodeValue> res = nodes.get(id);
+			List<NodeValue> res = nodes.get(id.time);
 			if (res != null && !res.isEmpty()) {
 				Collections.sort(res);
 				NodeValue result = null;
 				Iterator<NodeValue> iter = res.iterator();
 				while (iter.hasNext()) {
 					NodeValue next = iter.next();
+					if (!next.getId().equals(id)) continue; 
 					if (next.getTimestamp_long() <= timestamp_long) {
 						if (result == null
 								|| next.getTimestamp_long() >= result

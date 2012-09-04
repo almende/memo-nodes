@@ -17,10 +17,10 @@ public final class ArcOpShard extends MemoStorable {
 	ArcOp[] parentArray;
 	ArcOp[] childArray;
 	
-	public transient ImmutableListMultimap<UUID,ArcOp> children=null;
-	public transient ImmutableListMultimap<UUID,ArcOp> parents=null;
+	public transient ImmutableListMultimap<Long,ArcOp> children=null;
+	public transient ImmutableListMultimap<Long,ArcOp> parents=null;
 	
-	public static final ArrayListMultimap<UUID,ArcOp> template = ArrayListMultimap.create();
+	public static final transient ArrayListMultimap<Long,ArcOp> template = ArrayListMultimap.create();
 	transient boolean init=false;
 	transient boolean toDelete=false;
 	
@@ -43,29 +43,29 @@ public final class ArcOpShard extends MemoStorable {
 	public ArcOpShard(ArcOpBuffer buffer, ArcOpShard other){
 		if (other != null){
 			System.out.println("Merging shards");
-			ArcOp[] par = buffer.parents.values().toArray(new ArcOp[0]);
-			ArcOp[] chld = buffer.children.values().toArray(new ArcOp[0]);
+			ArcOp[] par = buffer.getParentOps().toArray(new ArcOp[0]);
+			ArcOp[] chld = buffer.getChildOps().toArray(new ArcOp[0]);
 			parentArray = ObjectArrays.concat(par, other.parentArray,ArcOp.class);
 			childArray = ObjectArrays.concat(chld, other.childArray,ArcOp.class);
 		} else {
-			parentArray = buffer.parents.values().toArray(new ArcOp[0]);
-			childArray = buffer.children.values().toArray(new ArcOp[0]);
+			parentArray = buffer.getParentOps().toArray(new ArcOp[0]);
+			childArray = buffer.getChildOps().toArray(new ArcOp[0]);
 		}
 		initMultimaps();
 	}
 	
 	public void initMultimaps(){
 		if (!init){
-			ImmutableListMultimap.Builder<UUID,ArcOp> childBuilder = new ImmutableListMultimap.Builder<UUID,ArcOp>();
+			ImmutableListMultimap.Builder<Long,ArcOp> childBuilder = new ImmutableListMultimap.Builder<Long,ArcOp>();
 			for (ArcOp ops: Arrays.asList(childArray)){
 				if (ops == null) break;
-		 		childBuilder.put(ops.getChild(),ops);
+		 		childBuilder.put(ops.getChild().time,ops);
 			}
 			children = childBuilder.build();
-			ImmutableListMultimap.Builder<UUID,ArcOp> parentBuilder = new ImmutableListMultimap.Builder<UUID,ArcOp>();
+			ImmutableListMultimap.Builder<Long,ArcOp> parentBuilder = new ImmutableListMultimap.Builder<Long,ArcOp>();
 			for (ArcOp ops: Arrays.asList(parentArray)){
 				if (ops == null) break;
-				parentBuilder.put(ops.getParent(),ops);
+				parentBuilder.put(ops.getParent().time,ops);
 			}
 			parents = parentBuilder.build();
 			init=true;
@@ -74,15 +74,15 @@ public final class ArcOpShard extends MemoStorable {
 
 	public ImmutableList<ArcOp> getChildOps(UUID id) {
 		initMultimaps();
-		return children.get(id);
+		return children.get(id.time);
 	}
 
 	public ImmutableList<ArcOp> getParentOps(UUID id) {
 		initMultimaps();
-		return parents.get(id);
+		return parents.get(id.time);
 	}
 	@Override
 	public int getSize(){
-		return parentArray.length;
+		return parentArray.length * ArcOpBuffer.BYTESPEROP;
 	}
 }

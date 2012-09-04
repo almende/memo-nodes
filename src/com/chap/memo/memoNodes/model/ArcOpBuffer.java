@@ -1,5 +1,8 @@
 package com.chap.memo.memoNodes.model;
 
+import java.util.Iterator;
+import java.util.List;
+
 import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.storage.ArcOpIndex;
 import com.chap.memo.memoNodes.storage.ArcOpShard;
@@ -9,20 +12,28 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 
 public class ArcOpBuffer {
-	public static final int STORESIZE = 1000000;
-	public static final int BYTESPEROP = 48;
+	public static final int STORESIZE = 250000;
+	public static final int BYTESPEROP = 100; //estimate!
+	public static final int COMPRESSION_RATIO = 15;
 	MemoReadBus ReadBus;
 
-	public static final ArrayListMultimap<UUID, ArcOp> template = ArrayListMultimap
+	public static final ArrayListMultimap<Long, ArcOp> template = ArrayListMultimap
 			.create();
-	public ListMultimap<UUID, ArcOp> children = ArrayListMultimap.create(template);
-	public ListMultimap<UUID, ArcOp> parents = ArrayListMultimap.create(template);
-
+	ListMultimap<Long, ArcOp> children = ArrayListMultimap.create(template);
+	ListMultimap<Long, ArcOp> parents = ArrayListMultimap.create(template);	
+	
+	public void clear(){
+		synchronized(this){
+			this.children.clear();
+			this.parents.clear();
+		}
+	}
+	
 	public void store(ArcOp ops) {
 		synchronized (this) {
-			parents.put(ops.getParent(), ops);
-			children.put(ops.getChild(), ops);
-			if (parents.size()*BYTESPEROP >= STORESIZE) {
+			parents.put(ops.getParent().time, ops);
+			children.put(ops.getChild().time, ops);
+			if (parents.size()*BYTESPEROP >= STORESIZE*COMPRESSION_RATIO) {
 				flush();
 			}
 		}
@@ -55,16 +66,39 @@ public class ArcOpBuffer {
 			this.children.clear();
 		}
 	}
-
+	public ImmutableList<ArcOp> getChildOps(){
+		synchronized(this){
+			return ImmutableList.copyOf(children.values());
+		}
+	}
 	public ImmutableList<ArcOp> getChildOps(UUID id) {
 		synchronized(this){
-			return ImmutableList.copyOf(children.get(id));
+			List<ArcOp> list = children.get(id.time);
+			Iterator<ArcOp> iter = list.iterator();
+			while (iter.hasNext()){
+				ArcOp op = iter.next();
+				if (!op.getChild().equals(id)) iter.remove();
+			}
+			return ImmutableList.copyOf(list);
+//			return ImmutableList.copyOf(children.get(id.time));
 		}
 	}
 
+	public ImmutableList<ArcOp> getParentOps(){
+		synchronized(this){
+			return ImmutableList.copyOf(parents.values());
+		}
+	}
 	public ImmutableList<ArcOp> getParentOps(UUID id) {
 		synchronized(this){
-			return ImmutableList.copyOf(parents.get(id));
+			List<ArcOp> list = parents.get(id.time);
+			Iterator<ArcOp> iter = list.iterator();
+			while (iter.hasNext()){
+				ArcOp op = iter.next();
+				if (!op.getParent().equals(id)) iter.remove();
+			}
+			return ImmutableList.copyOf(list);
+//			return ImmutableList.copyOf(parents.get(id.time));
 		}
 	}
 

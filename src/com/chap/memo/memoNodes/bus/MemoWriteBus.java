@@ -45,16 +45,17 @@ public class MemoWriteBus {
 
 	public void empty(){
 		synchronized(ops){
-			ops.children.clear();
-			ops.parents.clear();
+			ops.clear();
 		}
 		synchronized(values){
 			values.nodes.clear();
 		}
 	}
-	public static void emptyDB() {
-		String[] types = { "NodeValueIndex", "ArcOpIndex", "NodeValueShard",
-				"ArcOpShard" };
+	public static void emptyDB(){
+		emptyDB(new String[]{ "NodeValueIndex", "ArcOpIndex", "NodeValueShard",
+				"ArcOpShard"});
+	}
+	public static void emptyDB(String[] types) {
 		for (String type : types) {
 			Query q = new Query(type).setKeysOnly();
 			PreparedQuery pq = datastore.prepare(q);

@@ -49,5 +49,5 @@ public class NodeValue implements Serializable,Comparable<NodeValue> {
 	public int compareTo(NodeValue o) {
 		return timestamp==o.timestamp?0:(timestamp>o.timestamp?1:-1);
 	}
-
+	
 }
