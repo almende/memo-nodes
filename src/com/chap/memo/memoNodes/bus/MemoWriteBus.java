@@ -102,6 +102,8 @@ public class MemoWriteBus {
 			e.printStackTrace();
 			return;
 		}
+		System.out.println("Done importing DB!");
+		
 	}
 	
 	public void flush() {
@@ -110,7 +112,7 @@ public class MemoWriteBus {
 		}
 		ops.flush();
 		values.flush();
-		readBus.loadIndexes(true);
+		readBus.loadIndexes(false);
 	}
 
 	public NodeValue store(NodeValue result){

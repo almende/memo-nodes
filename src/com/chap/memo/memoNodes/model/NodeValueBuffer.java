@@ -1,5 +1,6 @@
 package com.chap.memo.memoNodes.model;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
@@ -15,7 +16,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimaps;
 
 public class NodeValueBuffer {
-	public static final int STORESIZE = 250000;
+	public static final int STORESIZE = 50000;
 	public static final int COMPRESSION_RATIO = 8;
 
 	MemoReadBus ReadBus;
@@ -44,30 +45,30 @@ public class NodeValueBuffer {
 	}
 
 	public void flush() {
+		ArrayList<NodeValueShard> others = null;
 		synchronized (this) {
 			if (size == 0)
 				return;
 			if (ReadBus == null) {
 				ReadBus = MemoReadBus.getBus();
 			}
-			NodeValueShard other = null;
-			if (STORESIZE - size > 0) {
-				other = ReadBus.getSparseNodeValueShard((STORESIZE
-						- size)*COMPRESSION_RATIO);
-			}
-			NodeValueShard shard = new NodeValueShard(this, other);
+			NodeValueShard shard = new NodeValueShard(this);
 			NodeValueIndex index = new NodeValueIndex(shard);
-			ReadBus.addNodeValueIndex(index, shard);
-			if (other != null) {
-				NodeValueIndex idx = ReadBus.removeNodeValueIndexByShard(other
-						.getMyKey());
-				if (idx != null)
-					idx.delete();
-				ReadBus.delShard(other);
-				other.delete();
+
+			if (STORESIZE*COMPRESSION_RATIO - size > 0) {
+				others = ReadBus.getSparseNodeValueShards(size/COMPRESSION_RATIO);
+			}
+			if (others != null){
+				others.add(0,shard);
+				ReadBus.addNodeValueIndex(index, shard);
+			} else {
+				ReadBus.addNodeValueIndex(index, shard);
 			}
 			this.nodes.clear();
 			size=0;
+		}
+		if (others != null){
+			NodeValueShard.devideAndMerge(others.toArray(new NodeValueShard[0]));
 		}
 	}
 

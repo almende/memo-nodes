@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import com.chap.memo.memoNodes.bus.MemoReadBus;
@@ -16,6 +17,7 @@ import com.chap.memo.memoNodes.servlet.JSONTuple;
 import com.eaio.uuid.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableList;
 
 /**
  * MemoNode is a graph database, designed to run effectively on the Google App Engine datastore. 
@@ -32,7 +34,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * 
  */
 public class MemoNode implements Comparable<MemoNode> {
-	public static UUID ROOT = new UUID("00000000-0000-002a-0000-000000000000");
+	public static UUID ROOT = UUID.nilUUID();
 	
 //	private static int existingNodes = 0;
 	static final ObjectMapper om = new ObjectMapper();
@@ -77,12 +79,12 @@ public class MemoNode implements Comparable<MemoNode> {
 	public static void purgeHistory(OutputStream out){
 		MemoReadBus.getBus().exportDB(out, true);
 	}
-	/**
-	 * Export and remove historical nodes, leaving only current values 
-	 */
-	public static void dropHistory(){
-		MemoReadBus.getBus().dropHistory();
-	}
+//	/**
+//	 * Export and remove historical nodes, leaving only current values 
+//	 */
+//	public static void dropHistory(){
+//		MemoReadBus.getBus().dropHistory();
+//	}
 	/**
 	 * import the given byte array as subgraph, HOW?
 	 */
@@ -94,7 +96,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * Use sparsely as this node will otherwise get a lot of children, better to use one or more 
 	 * intermediate nodes.
 	 * 
-	 * Root node has UUID: 00000000-0000-002a-0000-000000000000 
+	 * Root node has UUID: 00000000-0000-0000-0000-000000000000 
 	 */
 	public static MemoNode getRootNode() {
 		MemoReadBus readBus = MemoReadBus.getBus();
@@ -102,6 +104,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		if (result == null) {
 			result = new MemoNode(ROOT, "root");
 		}
+//		System.out.println("Root node("+ROOT.toString()+") has time:"+result.getId().time);
 		return result;
 	}
 	
@@ -149,6 +152,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	public MemoNode(byte[] value){
 //		existingNodes++;
 		this.uuid=new UUID();
+//		if (this.uuid.time < 0) System.out.println("created UUID with time:"+this.uuid.time);
 		this.value=writeBus.store(this.uuid, value);
 		this.parents=new ArcList(this.uuid,0);
 		this.children=new ArcList(this.uuid,1);
@@ -160,6 +164,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	public MemoNode(String value){
 //		existingNodes++;
 		this.uuid=new UUID();
+//		if (this.uuid.time < 0) System.out.println("created UUID with time:"+this.uuid.time);
 		this.value=writeBus.store(this.uuid, value.getBytes());
 		this.parents=new ArcList(this.uuid,0);
 		this.children=new ArcList(this.uuid,1);
@@ -348,20 +353,23 @@ public class MemoNode implements Comparable<MemoNode> {
 		return this.value == null?null:this.value.getValue(); 
 	}
 	/**
-	 * Get current value of node as a string. The returned string is limited to 250 bytes, for
-	 * larger strings use "new String(getValue())" instead.
+	 * Get current value of node as a string. The returned string is assuming an ASCII charset, for
+	 * special chars use "new String(getValue())" instead.
 	 * If node has been deleted, can't be found or has been updated to a null value,
 	 * this call returns an empty string.
 	 * 
-	 * @return String, limited to 250 bytes.
+	 * @return String
 	 */
 	public String getStringValue(){
-		byte[] res = getValue();
-		if (res != null) {
-			return new String(res,0,Math.min(250, res.length));
+		byte[] bytes = getValue();
+		if (bytes == null) return "";
+		char[] buffer = new char[bytes.length];
+		for(int i = 0; i < buffer.length; i++) {
+			buffer[i] = (char)bytes[i];
 		}
-		return "";
+		return new String(buffer);
 	}
+
 	public byte[] valueAt(long timestamp){
 		NodeValue oldValue;
 		oldValue=readBus.getValue(getId(), timestamp);	
@@ -395,7 +403,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * 
 	 * @return ArrayList<MemoNode> parents
 	 */
-	public ArrayList<MemoNode> getParents(){
+	public ImmutableList<MemoNode> getParents(){
 		return this.parents.getNodes();
 	}
 	/**
@@ -403,7 +411,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * 
 	 * @return ArrayList<MemoNode> children
 	 */
-	public ArrayList<MemoNode> getChildren(){
+	public ImmutableList<MemoNode> getChildren(){
 		return this.children.getNodes();
 	}
 	/**
@@ -537,9 +545,15 @@ public class MemoNode implements Comparable<MemoNode> {
 			this.addChild(property.getId());
 			break;
 		case 1:
-			ArrayList<MemoNode> values = properties.get(0).getChildren();
+			List<MemoNode> values = properties.get(0).getChildren();
 			if (values.size() == 1) {
-				values.get(0).update(propValue.getBytes());
+				MemoNode val=values.get(0);
+				if (val.getStringValue().equals(propValue)) break;
+				val.update(propValue.getBytes());
+				break;
+			}
+			if (values.size() == 0){
+				properties.get(0).addChild(new MemoNode(propValue.getBytes()));
 				break;
 			}
 			//explicit no-break
@@ -547,7 +561,9 @@ public class MemoNode implements Comparable<MemoNode> {
 			System.out
 					.println("Error, incorrect properties found, repairing! setPropertyValue("
 							+ propName + "," + propValue + ")!");
-			properties.get(0).delete();
+			for (MemoNode node : properties){
+				node.delete();
+			}
 			return setPropertyValue(propName,propValue);
 		}
 		return this;
@@ -562,7 +578,7 @@ public class MemoNode implements Comparable<MemoNode> {
 	public String getPropertyValue(String propName){
 		ArrayList<MemoNode> properties = getChildrenByStringValue(propName, 1);
 		if (properties.size() == 1) {
-			ArrayList<MemoNode> values = properties.get(0).getChildren();
+			List<MemoNode> values = properties.get(0).getChildren();
 			if (values.size() > 1)
 				System.out.println("Warning, property with multiple values: "+this.getId()+":"+propName);
 			if (values.size() >= 1)
@@ -587,31 +603,31 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 	
 	private StepState doStep(boolean preamble, MemoQuery query, MemoNode toCompare,
-						     ArrayList<MemoNode> results, HashSet<MemoNode> seenNodes, 
+						     ArrayList<MemoNode> results, HashSet<UUID> seenNodes, 
 						     ArrayList<MemoNode> patterns, int topX, HashMap<String,String> arguments){
 		
 		MemoNode step = query.node;
 		//System.out.println("checking node:" + toCompare.getStringValue() + "/" + query.value + "("+preamble+")");
 
 		if (!query.match(toCompare)) return new StepState(false,"Node doesn't match.",query,toCompare);
-		if (seenNodes.contains(toCompare)) return new StepState(true,"Loop/Multipath detected",query,toCompare);
+		if (seenNodes.contains(toCompare.getId())) return new StepState(true,"Loop/Multipath detected",query,toCompare);
 		if (preamble) {
 			for (MemoNode pattern : patterns){
 				StepState res = doStep(false,MemoQuery.parseQuery(pattern.getChildren().get(0), arguments),
-									   toCompare,null,new HashSet<MemoNode>(),null,0,arguments);
+									   toCompare,null,new HashSet<UUID>(),null,0,arguments);
 				if (res.matched){
 					results.add(toCompare);
 					return new StepState(true,"Node matches pattern! Added to result, no need to search deeper.",query,toCompare);
 				}
 			}
 		}
-		seenNodes.add(toCompare);
+		seenNodes.add(toCompare.getId());
 		
-		ArrayList<MemoNode> nextPats = step.getChildren();
+		List<MemoNode> nextPats = step.getChildren();
 		int toMatchNo = nextPats.size();
 		if (toMatchNo == 0) return new StepState(true,"End of pattern",query,toCompare);
 		
-		ArrayList<MemoNode> children = toCompare.getChildren();		
+		List<MemoNode> children = toCompare.getChildren();		
 		if (!preamble && children.size() < toMatchNo) return new StepState(false,"Too little children for pattern",query,toCompare);
 		
 		ArrayList<MemoQuery> queries = new ArrayList<MemoQuery>(toMatchNo);
@@ -648,7 +664,7 @@ public class MemoNode implements Comparable<MemoNode> {
 			ArrayList<MemoNode> patterns, int topx, HashMap<String,String> arguments) {
 
 		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?Math.min(200,topx):200);
-		HashSet<MemoNode> seenNodes = new HashSet<MemoNode>(200);
+		HashSet<UUID> seenNodes = new HashSet<UUID>(200);
 		
 		if (patterns.size() <= 0) {
 			System.out.println("Warning, empty algorithm used (no patterns).");
@@ -717,7 +733,7 @@ public class MemoNode implements Comparable<MemoNode> {
 		node.put("id", this.getId().toString());
 		node.put("title", this.getStringValue());
 		
-		ArrayList<MemoNode> children = this.getChildren();
+		List<MemoNode> children = this.getChildren();
 		if (depth-- > 0) {
 			for (MemoNode child : children) {
 				child.toJSON(depth,result);

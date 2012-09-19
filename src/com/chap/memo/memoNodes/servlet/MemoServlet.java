@@ -15,7 +15,9 @@ public class MemoServlet extends HttpServlet {
 			throws IOException {
 		
 		String input = req.getParameter("import");
+		System.out.println("Import param:'"+input+"'");
 		if (input != null){
+			
 			if (req.getParameter("history") == null) MemoNode.emptyDB();
 			MemoNode.importDB(req.getInputStream());
 			MemoNode.flushDB();
@@ -40,12 +42,12 @@ public class MemoServlet extends HttpServlet {
 				resp.setContentType("text/plain");
 				resp.getWriter().append("database cleared!\n");
 			}
-			String dropHistory = req.getParameter("dropHistory");
-			if (dropHistory != null){
-				MemoNode.dropHistory();
-				resp.setContentType("text/plain");
-				resp.getWriter().append("History cleared!\n");
-			}
+//			String dropHistory = req.getParameter("dropHistory");
+//			if (dropHistory != null){
+//				MemoNode.dropHistory();
+//				resp.setContentType("text/plain");
+//				resp.getWriter().append("History cleared!\n");
+//			}
 			String export = req.getParameter("export");
 			if (export != null){
 				MemoNode.flushDB();

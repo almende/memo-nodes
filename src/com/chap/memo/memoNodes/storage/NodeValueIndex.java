@@ -1,30 +1,32 @@
 package com.chap.memo.memoNodes.storage;
 
 import java.util.Arrays;
-import java.util.Set;
 
+import com.chap.memo.memoNodes.MemoUtils;
+import com.chap.memo.memoNodes.model.NodeValue;
 import com.eaio.uuid.UUID;
 import com.google.appengine.api.datastore.Key;
 
 public final class NodeValueIndex extends MemoStorable {
 	private static final long serialVersionUID = -4925678482726158446L;
 	
-	private long[] nodeIdArray;
-	private Key shardKey;
-	private long oldest;
-	private long newest;
+	private final long[] nodeIdArray;
+	private final Key shardKey;
+	private final long oldest;
+	private final long newest;
 	
-	NodeValueIndex() {
-	};
-
 	public NodeValueIndex(NodeValueShard shard) {
-		Set<Long> set = shard.nodes.keySet();
-		nodeIdArray = new long[set.size()];
-		int i=0;
-		for (Long node: set){
-			nodeIdArray[i++]=node;
+		long[] tmp = new long[shard.nodeArray.length];
+		NodeValue last = null;
+		int count=0;
+		for (NodeValue val : shard.nodeArray){
+			if (last != null && val.getId().time == last.getId().time){
+				continue;
+			}
+			tmp[count++]=MemoUtils.gettime(val.getId());
+			last=val;
 		}
-		Arrays.sort(nodeIdArray);
+		nodeIdArray = Arrays.copyOf(tmp, count);
 		shardKey = shard.store("NodeValueShard", shard.newest);
 		oldest = shard.oldest;
 		newest = shard.newest;
@@ -50,7 +52,9 @@ public final class NodeValueIndex extends MemoStorable {
 	}
 
 	public boolean contains(UUID uuid){
-		return (Arrays.binarySearch(nodeIdArray, uuid.getTime())>=0);
+		int res =MemoUtils.binarySearch(nodeIdArray, MemoUtils.gettime(uuid)); 
+		System.out.println("Searching for :"+uuid+" in index: "+ res);
+		return (res>=0);
 	}
 	
 	public Key getShardKey() {

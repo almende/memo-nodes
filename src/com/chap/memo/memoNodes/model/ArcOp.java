@@ -3,6 +3,7 @@ package com.chap.memo.memoNodes.model;
 import java.io.Serializable;
 import java.util.Date;
 
+import com.chap.memo.memoNodes.MemoUtils;
 import com.eaio.uuid.UUID;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -75,6 +76,15 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	@JsonIgnore
 	public UUID getChild() {
 		return new UUID(uuid20,uuid21);
+	}
+	@JsonIgnore
+	public long getParentTime() {
+		return MemoUtils.gettime(uuid10);
+	}
+
+	@JsonIgnore
+	public long getChildTime() {
+		return MemoUtils.gettime(uuid20);
 	}
 
 	@JsonIgnore

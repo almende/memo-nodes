@@ -1,5 +1,6 @@
 package com.chap.memo.memoNodes.model;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -12,8 +13,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 
 public class ArcOpBuffer {
-	public static final int STORESIZE = 250000;
-	public static final int BYTESPEROP = 100; //estimate!
+	public static final int STORESIZE = 25000;
+	public static final int BYTESPEROP = 25; //estimate!
 	public static final int COMPRESSION_RATIO = 15;
 	MemoReadBus ReadBus;
 
@@ -33,37 +34,38 @@ public class ArcOpBuffer {
 		synchronized (this) {
 			parents.put(ops.getParent().time, ops);
 			children.put(ops.getChild().time, ops);
-			if (parents.size()*BYTESPEROP >= STORESIZE*COMPRESSION_RATIO) {
+			if (parents.size()*2*BYTESPEROP >= STORESIZE*COMPRESSION_RATIO) {
 				flush();
 			}
 		}
 	}
 
 	public void flush() {
+		ArrayList<ArcOpShard> others = null;
 		synchronized (this) {
 			if (parents.size() == 0)
 				return;
 			if (ReadBus == null) {
 				ReadBus = MemoReadBus.getBus();
 			}
-			// Get semi empty shard
-			ArcOpShard other = null;
-			if (STORESIZE - parents.size()*BYTESPEROP > 0) {
-				other = ReadBus.getSparseArcOpShard(STORESIZE - parents.size()*BYTESPEROP);
-			}
-			ArcOpShard shard = new ArcOpShard(this, other);
+			ArcOpShard shard = new ArcOpShard(this);
 			ArcOpIndex index = new ArcOpIndex(shard);
-			ReadBus.addOpsIndex(index, shard);
-			if (other != null) {
-				ArcOpIndex idx = ReadBus.removeArcOpIndexByShard(other
-						.getMyKey());
-				if (idx != null)
-					idx.delete();
-				ReadBus.delShard(other);
-				other.delete();
+			
+			// Get semi empty shards
+			if (STORESIZE*COMPRESSION_RATIO - parents.size()*2*BYTESPEROP > 0) {
+				others = ReadBus.getSparseArcOpShards(parents.size()*2*BYTESPEROP/COMPRESSION_RATIO);
+			}
+			if (others != null){
+				others.add(0,shard);
+				ReadBus.addOpsIndex(index, shard);
+			} else {
+				ReadBus.addOpsIndex(index, shard);
 			}
 			this.parents.clear();
 			this.children.clear();
+		}
+		if (others != null){
+			ArcOpShard.devideAndMerge(others.toArray(new ArcOpShard[0]));
 		}
 	}
 	public ImmutableList<ArcOp> getChildOps(){
@@ -80,7 +82,6 @@ public class ArcOpBuffer {
 				if (!op.getChild().equals(id)) iter.remove();
 			}
 			return ImmutableList.copyOf(list);
-//			return ImmutableList.copyOf(children.get(id.time));
 		}
 	}
 
@@ -98,7 +99,6 @@ public class ArcOpBuffer {
 				if (!op.getParent().equals(id)) iter.remove();
 			}
 			return ImmutableList.copyOf(list);
-//			return ImmutableList.copyOf(parents.get(id.time));
 		}
 	}
 

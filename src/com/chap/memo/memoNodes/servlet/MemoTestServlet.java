@@ -4,9 +4,9 @@ import static com.google.appengine.api.taskqueue.TaskOptions.Builder.withUrl;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -21,7 +21,8 @@ import com.google.appengine.api.taskqueue.TaskOptions;
 public class MemoTestServlet extends HttpServlet {
 	boolean debug = false;
 	static Queue queue = QueueFactory.getDefaultQueue();
-
+	long total=0;
+	
 	private void log(HttpServletResponse resp, boolean ok, String shortMsg) {
 		log(resp, ok, shortMsg, null);
 	}
@@ -51,6 +52,7 @@ public class MemoTestServlet extends HttpServlet {
 	}
 	public void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
+
 		try {
 			debug = false;
 			resp.setContentType("text/plain");
@@ -110,6 +112,10 @@ public class MemoTestServlet extends HttpServlet {
 				}
 			}
 			log(resp, true, "\nStarting single node tests:");
+			
+			MemoNode rootNode = MemoNode.getRootNode();
+			log(resp,true,"Root node found:"+rootNode.getId().toString());
+			
 			// Add single node
 			String title = "First node";
 			MemoNode first = new MemoNode(title);
@@ -192,7 +198,9 @@ public class MemoTestServlet extends HttpServlet {
 							+ first.getChildren().get(0).getStringValue());
 
 			MemoNode.flushDB();
+			System.out.println("Running flush!");
 			second = new MemoNode(first.getId()).getChildren().get(0);
+			System.out.println("Got second child");
 			log(resp, test(second.getStringValue(), secondTitle),
 					"Child found after flush", ": " + second.getId() + "/"
 							+ second.getStringValue());
@@ -395,7 +403,7 @@ public class MemoTestServlet extends HttpServlet {
 
 			MemoNode.compactDB();
 
-			Date start = new Date();
+			long start = System.currentTimeMillis();
 			log(resp, true, "\nPerformance test: Depth (" + nofNodes + ")");
 
 			node = new MemoNode("start");
@@ -404,16 +412,16 @@ public class MemoTestServlet extends HttpServlet {
 				node.addParent(newNode.getId());
 				node = newNode;
 			}
-			Date time = new Date();
+			long time = System.currentTimeMillis();
 			log(resp, true,
-					"Storing done in: " + (time.getTime() - start.getTime())
+					"Storing done in: " + (time - start)
 							+ " ms");
 
 			MemoNode startNode = node;
 
 			int count = 0;
 			while (node != null) {
-				ArrayList<MemoNode> children = node.getChildren();
+				List<MemoNode> children = node.getChildren();
 				if (children.isEmpty()) {
 					System.out.println(node.getId() + ":"
 							+ node.getStringValue() + " has no children!");
@@ -428,24 +436,24 @@ public class MemoTestServlet extends HttpServlet {
 				node = children.get(0);
 			}
 			log(resp, (count == nofNodes), count + " children counted in:"
-					+ (new Date().getTime() - time.getTime()) + " ms");
+					+ (System.currentTimeMillis() - time) + " ms");
 
 			MemoNode.flushDB();//To get a clean read setup!
-			time = new Date();
+			time = System.currentTimeMillis();
 			startNode.delete();
 			log(resp, true, " Nodes deleted again in:"
-					+ (new Date().getTime() - time.getTime()) + " ms");
+					+ (System.currentTimeMillis() - time) + " ms");
 
 			
-			time = new Date();
+			time = System.currentTimeMillis();
 			MemoNode.flushDB();
 			log(resp, true,
-					" Db flushed:" + (new Date().getTime() - time.getTime())
+					" Db flushed:" + (System.currentTimeMillis() - time)
 							+ " ms");
-			time = new Date();
+			time = System.currentTimeMillis();
 			MemoNode.compactDB();
 			log(resp, true,
-					" Db compacted:" + (new Date().getTime() - time.getTime())
+					" Db compacted:" + (System.currentTimeMillis() - time)
 							+ " ms");
 			
 			long arcStart = System.currentTimeMillis();
@@ -476,14 +484,14 @@ public class MemoTestServlet extends HttpServlet {
 					" Nodes deleted again in:"
 							+ (System.currentTimeMillis() - atime) + " ms");
 
-			time = new Date();
+			time = System.currentTimeMillis();
 
 			MemoNode.flushDB();
 
 			log(resp, true,
-					" Db flushed:" + (new Date().getTime() - time.getTime())
+					" Db flushed:" + (System.currentTimeMillis() - time)
 							+ " ms");
-			start = new Date();
+			start = System.currentTimeMillis();
 
 			log(resp, true, "\nPattern search test:");
 
@@ -570,10 +578,10 @@ public class MemoTestServlet extends HttpServlet {
 
 			preAny.addChild(preAny); // Spannend:)
 
-			time = new Date();
+			time = System.currentTimeMillis();
 			log(resp,
 					true,
-					"Pattern stored in " + (time.getTime() - start.getTime())
+					"Pattern stored in " + (time - start)
 							+ " ms  ->" + preAmble.getId() + " : "
 							+ pattern.getId());
 			start = time;
@@ -588,9 +596,9 @@ public class MemoTestServlet extends HttpServlet {
 							+ res.getId());
 				}
 			}
-			time = new Date();
+			time = System.currentTimeMillis();
 			log(resp, result.size() == 2, "Search 1 done in "
-					+ (time.getTime() - start.getTime()) + " ms");
+					+ (time - start) + " ms");
 			start = time;
 
 			arguments.put("Number", "Seven");
@@ -601,9 +609,9 @@ public class MemoTestServlet extends HttpServlet {
 							+ res.getId());
 				}
 			}
-			time = new Date();
+			time = System.currentTimeMillis();
 			log(resp, result.size() == 1, "Search 2 done in "
-					+ (time.getTime() - start.getTime()) + " ms");
+					+ (time - start) + " ms");
 
 			 one.delete();
 			result = startNode.search(algorithm, 2, arguments); // topx = 2
@@ -613,9 +621,9 @@ public class MemoTestServlet extends HttpServlet {
 							+ res.getId());
 				}
 			}
-			time = new Date();
+			time = System.currentTimeMillis();
 			log(resp, result.size() == 0, "Search 3 done in "
-					+ (time.getTime() - start.getTime()) + " ms");
+					+ (time - start) + " ms");
 
 			log(resp, startNode.getChildren().size() == 1,
 					"StartNode has only one child left", ":"
@@ -626,10 +634,82 @@ public class MemoTestServlet extends HttpServlet {
 						"child: " + child.getId() + "/"
 								+ child.getStringValue());
 			}
+			
+			total = 0;
+			String searchText = "child 1";
+			int num = 10;
+			int props = 0;
+			int depth = 2;
+			if (req.getParameter("num") != null) {
+				num = Integer.valueOf(req.getParameter("num"));
+			}
+			if (req.getParameter("props") != null) {
+				props = Integer.valueOf(req.getParameter("props"));
+			}
+			if (req.getParameter("depth") != null) {
+				depth = Integer.valueOf(req.getParameter("depth"));
+			}
+			System.out.println("depth=" + depth);
+
+			log(resp,true,"\nTest broad tree: "+num+"@"+depth+" with:"+props+" textproperties per node.");
+			
+			// create nested nodes
+			start = System.currentTimeMillis();
+			long end = 0;
+			MemoNode root = MemoNode.getRootNode();
+			total++;
+			resp.getWriter().println("root id=" + root.getId().toString());
+			addChildren(root, num, depth, props);
+			end = System.currentTimeMillis();
+			log(resp,true,"Created " + total + " nodes" +
+					" (" + (end - start) + "ms)");
+
+			// force storing the nodes
+			start = System.currentTimeMillis();
+			MemoNode.flushDB();
+			end = System.currentTimeMillis();
+			log(resp,true,"flushed database " +
+					" (" + (end - start) + "ms)");
+
+			// create a search structure
+			MemoNode preambleStart = new MemoNode("start");
+			MemoNode preamble = new MemoNode("any");
+			preambleStart.addChild(preamble);
+			preamble.addChild(preamble);
+			
+			pattern = new MemoNode("pattern");
+			MemoNode pattern1 = new MemoNode("equal;" + searchText);
+			pattern.addChild(pattern1);
+			HashMap<String, String> args = new HashMap<String, String>();
+			
+			// search for all nodes with name "child 1"
+			List<MemoNode> children = null;
+			for (int i = 0; i < 3; i++) {
+				start = System.currentTimeMillis();
+				children = root.search(preambleStart, pattern, 0, args);
+				end = System.currentTimeMillis();
+				log(resp,children.size()>0,"found " + children.size() + " nodes, round:"+i+
+						" (" + (end - start) + "ms)");
+			}
 			log(resp, true, "\nAll tests done!");
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+// recursively add children to given parent node
+private void addChildren (MemoNode parent, int num, int depth, int props) {
+	for (int i = 0; i < num; i++) {
+		MemoNode child = new MemoNode("child " + i);
+		for (int j = 0; j < props; j++) {
+			child.setPropertyValue(String.valueOf(j), "bla bla bla " + j);
+		}
+		
+		parent.addChild(child);
+		total++;
+		if (depth > 0) {
+			addChildren(child, num, depth - 1, props);
+		}
+	}
+}
 }
