@@ -79,12 +79,22 @@ public class ArcOp implements Serializable, Comparable<ArcOp> {
 	}
 	@JsonIgnore
 	public long getParentTime() {
-		return MemoUtils.gettime(uuid10);
+		long result =MemoUtils.gettime(uuid10);
+//		if (new Date((result-0x01B21DD213814000L)/10000).before(new Date(0))){
+//			System.out.println("time is:"+result+":"+(result-0x01B21DD213814000L)/10000+":"+new Date((result-0x01B21DD213814000L)/10000).toString());
+//			System.out.println(this.getParent().toString()+" : "+Long.toHexString(uuid20)+ " -> " +Long.toHexString(result));
+//		}		
+		return result;
 	}
 
 	@JsonIgnore
 	public long getChildTime() {
-		return MemoUtils.gettime(uuid20);
+		long result =MemoUtils.gettime(uuid20);
+//		if (new Date((result-0x01B21DD213814000L)/10000).before(new Date(0))){
+//			System.out.println("time is:"+result+":"+(result-0x01B21DD213814000L)/10000+":"+new Date((result-0x01B21DD213814000L)/10000).toString());
+//			System.out.println(this.getChild().toString()+" : "+Long.toHexString(uuid20)+ " -> " +Long.toHexString(result));
+//		}		
+		return result;
 	}
 
 	@JsonIgnore

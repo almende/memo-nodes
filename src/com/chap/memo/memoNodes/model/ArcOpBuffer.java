@@ -15,7 +15,7 @@ import com.google.common.collect.ListMultimap;
 public class ArcOpBuffer {
 	public static final int STORESIZE = 25000;
 	public static final int BYTESPEROP = 25; //estimate!
-	public static final int COMPRESSION_RATIO = 15;
+	public static final int COMPRESSION_RATIO = 8;
 	MemoReadBus ReadBus;
 
 	public static final ArrayListMultimap<Long, ArcOp> template = ArrayListMultimap

@@ -1,6 +1,7 @@
 package com.chap.memo.memoNodes.storage;
 
 import java.util.Arrays;
+//import java.util.Date;
 
 import com.chap.memo.memoNodes.MemoUtils;
 import com.chap.memo.memoNodes.model.ArcOp;
@@ -44,10 +45,9 @@ public final class ArcOpIndex extends MemoStorable {
 		}
 		childrenArray = Arrays.copyOf(tmp, count);
 		
-		shardKey = ops.store("ArcOpShard");
-		long time = Math.min(parentArray.length>0?parentArray[0]:System.currentTimeMillis(), childrenArray.length>0?childrenArray[0]:System.currentTimeMillis());
-//		System.out.println("Storing index with time:"+time+" "+new Date(time).toString());
-		this.store("ArcOpIndex",time);
+		shardKey = ops.store("ArcOpShard",ops.storeTime);
+		//		System.out.println("Storing index with time:"+time+" "+new Date(time).toString());
+		this.store("ArcOpIndex",ops.storeTime);
 	}
 
 	public static ArcOpIndex load(Key key) {
@@ -68,6 +68,16 @@ public final class ArcOpIndex extends MemoStorable {
 	}
 	public int getSize(){
 		return parentArray.length;
+	}
+	
+	@Override
+	public int compareTo(MemoStorable other) {
+		if (other instanceof ArcOpIndex){
+			ArcOpIndex o = (ArcOpIndex) other;
+			return this.storeTime==o.storeTime?0:(this.storeTime>o.storeTime?1:-1);
+		} else {
+			return super.compareTo(other);
+		}
 	}
 }
 

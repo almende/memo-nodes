@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import com.chap.memo.memoNodes.MemoUtils;
 import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.storage.NodeValueIndex;
 import com.chap.memo.memoNodes.storage.NodeValueShard;
@@ -31,6 +32,8 @@ public class NodeValueBuffer {
 	
 	public void store(NodeValue nodeVal) {
 		synchronized (this) {
+			if (MemoUtils.gettime(nodeVal.getId()) < 0) return;
+			
 			nodes.put(nodeVal.getId().time, nodeVal);
 			if (newest == 0 || nodeVal.getTimestamp_long() > newest)
 				newest = nodeVal.getTimestamp_long();
@@ -57,13 +60,11 @@ public class NodeValueBuffer {
 
 			if (STORESIZE*COMPRESSION_RATIO - size > 0) {
 				others = ReadBus.getSparseNodeValueShards(size/COMPRESSION_RATIO);
+				if (others != null){
+					others.add(0,shard);
+				}
 			}
-			if (others != null){
-				others.add(0,shard);
-				ReadBus.addNodeValueIndex(index, shard);
-			} else {
-				ReadBus.addNodeValueIndex(index, shard);
-			}
+			ReadBus.addNodeValueIndex(index, shard);
 			this.nodes.clear();
 			size=0;
 		}

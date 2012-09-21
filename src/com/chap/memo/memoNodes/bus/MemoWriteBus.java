@@ -73,6 +73,7 @@ public class MemoWriteBus {
 	}
 
 	public void importDB(InputStream in){
+		long start = System.currentTimeMillis();
 		System.out.println("Importing DB!");
 		SimpleModule nvModule = new SimpleModule("NodeValueDeserializer", new Version(1, 0, 0, "alpha", null, null))
 		   .addDeserializer(NodeValue.class, new ImportNodeValueDeserializer());
@@ -102,8 +103,8 @@ public class MemoWriteBus {
 			e.printStackTrace();
 			return;
 		}
-		System.out.println("Done importing DB!");
-		
+		this.flush();
+		System.out.println("Done importing DB in: "+(System.currentTimeMillis()-start)+" ms.");
 	}
 	
 	public void flush() {

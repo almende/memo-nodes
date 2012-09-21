@@ -1,21 +1,29 @@
 package com.chap.memo.memoNodes;
 
-//import java.util.Date;
-
 import com.eaio.uuid.UUID;
 
 public class MemoUtils {
 	public static long gettime(UUID uuid){
-		return gettime(uuid.time);
+//		System.out.print("(from uuid)");
+		long result =gettime(uuid.time);
+//		if (new Date((result-0x01B21DD213814000L)/10000).before(new Date(0))){
+//			System.out.println("time is:"+result+":"+(result-0x01B21DD213814000L)/10000+":"+new Date((result-0x01B21DD213814000L)/10000).toString());
+//			System.out.println(uuid.toString()+" : "+Long.toHexString(uuid.time)+ " -> " +Long.toHexString(result));
+//		}		
+		return result;
 	}
 	public static long gettime(long time){
-		long result = time >> 32;
-		result |=     (time & 0x00000000FFFF0000L) << 16;
-		result |=     (time & 0x0000000000000FFFL) << 48;
-//		System.out.println("time is:"+new Date((result-0x01B21DD213814000L)/10000).toString());
+		if (time == 0) return 0;
+		long result = (time >> 32) & 0xFFFFFFFFL;
+		result |=     (time & 0xFFFF0000L) << 16;
+		result |=     (time & 0xFFFL) << 48;
+//		if (time == 0x3bc7003f211e2L){
+//			System.out.println(Long.toHexString(time) +" -> "+Long.toHexString(result)+ " // "+new Date((result-0x01B21DD213814000L)/10000).toString());
+//		}
 		return result;
 	}
 	public static final int binarySearch(long[] array, long key){
+		if (array.length == 0) return -1;
 		int min = 0, max = array.length-1;
 		long minVal = array[min], maxVal = array[max];
 	    int nPreviousSteps = 0;

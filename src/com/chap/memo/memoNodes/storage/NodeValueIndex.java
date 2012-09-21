@@ -53,7 +53,7 @@ public final class NodeValueIndex extends MemoStorable {
 
 	public boolean contains(UUID uuid){
 		int res =MemoUtils.binarySearch(nodeIdArray, MemoUtils.gettime(uuid)); 
-		System.out.println("Searching for :"+uuid+" in index: "+ res);
+//		System.out.println("Searching for :"+uuid+" in index: "+ res);
 		return (res>=0);
 	}
 	

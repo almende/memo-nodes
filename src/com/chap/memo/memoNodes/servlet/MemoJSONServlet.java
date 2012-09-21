@@ -99,7 +99,8 @@ final public class MemoJSONServlet extends HttpServlet {
 				);
 			}
 		} catch (Exception e){
-			System.out.println("Warning: UUID not parsible");
+			System.out.println("Warning: Error producing JSON");
+			e.printStackTrace();
 		}
 	}
 }

@@ -2,7 +2,7 @@ package com.chap.memo.memoNodes.servlet;
 
 import java.util.ArrayList;
 
-import com.chap.memo.memoNodes.MemoNode;
+import com.eaio.uuid.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
@@ -11,7 +11,7 @@ final public class JSONTuple {
 
 	ArrayNode nodes = om.createArrayNode();
 	ArrayNode links = om.createArrayNode();
-	ArrayList<MemoNode> seenNodes= new ArrayList<MemoNode>();
+	ArrayList<UUID> seenNodes= new ArrayList<UUID>();
 	public ArrayNode getNodes() {
 		return nodes;
 	}
@@ -24,10 +24,10 @@ final public class JSONTuple {
 	public void setLinks(ArrayNode links) {
 		this.links = links;
 	}
-	public ArrayList<MemoNode> getSeenNodes() {
+	public ArrayList<UUID> getSeenNodes() {
 		return seenNodes;
 	}
-	public void setSeenNodes(ArrayList<MemoNode> seenNodes) {
+	public void setSeenNodes(ArrayList<UUID> seenNodes) {
 		this.seenNodes = seenNodes;
 	}
 }

@@ -28,19 +28,20 @@ public final class NodeValueShard extends MemoStorable {
 	
 	public static void devideAndMerge(NodeValueShard[] shards){
 		if (shards.length <= 1) return;
+		System.out.println("Merging NodeValue shards:"+shards.length);
 		MemoReadBus ReadBus = MemoReadBus.getBus(); 
 		int maxSize = NodeValueBuffer.COMPRESSION_RATIO*NodeValueBuffer.STORESIZE;
-		ArrayList<NodeValue> nodes = new ArrayList<NodeValue>(maxSize);
+		ArrayList<NodeValue> nodes = new ArrayList<NodeValue>(maxSize/52);
 		for (NodeValueShard shard : shards){
 			nodes.ensureCapacity(nodes.size()+shard.nodeArray.length);
 			nodes.addAll(Arrays.asList(shard.nodeArray));
 		}
 		Collections.sort(nodes); //Sort on Timestamp
-		ArrayList<NodeValue> newNodes = new ArrayList<NodeValue>(Math.min(maxSize,nodes.size()));
+		ArrayList<NodeValue> newNodes = new ArrayList<NodeValue>(Math.min(maxSize/52,nodes.size()));
 		
 		Iterator<NodeValue> iter = nodes.iterator();
 		while (iter.hasNext()){
-			int count = maxSize;
+			int count = maxSize-(newNodes.size()>0?newNodes.get(0).getValue().length+48:0);
 			NodeValue node = iter.hasNext()?iter.next():null;
 			while (count > 0 && node != null){
 				newNodes.add(node);
@@ -83,6 +84,9 @@ public final class NodeValueShard extends MemoStorable {
 			count+=val.getValue().length+48;
 		}
 		size=count;
+		if (nodeArray.length>0){
+			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length-1].getId())-MemoUtils.gettime(nodeArray[0].getId());
+		}
 	}
 	public NodeValueShard(ArrayList<NodeValue> nodeList){
 		Collections.sort(nodeList);
@@ -96,6 +100,9 @@ public final class NodeValueShard extends MemoStorable {
 			count+=val.getValue().length+48;
 		}
 		size=count;
+		if (nodeArray.length>0){
+			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length-1].getId())-MemoUtils.gettime(nodeArray[0].getId());
+		}
 	}
 	public ImmutableList<NodeValue> findAll(UUID id) {
 		int pivot = Arrays.binarySearch(nodeArray,new NodeValue(id,null,0),nodeCmp);

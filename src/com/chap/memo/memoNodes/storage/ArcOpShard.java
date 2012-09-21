@@ -74,9 +74,9 @@ public final class ArcOpShard extends MemoStorable {
 				ReadBus.addOpsIndex(index, shard);
 				newParents.clear();
 				newChildren.clear();
-				if (parent != null) newParents.add(parent);
-				if (child != null) newChildren.add(child);
 			}
+			if (parent != null) newParents.add(parent);
+			if (child != null) newChildren.add(child);
 		}
 		ArrayList<ArcOp> newRootParents = new ArrayList<ArcOp>(Math.min(maxSize,rootParentList.size()));
 		ArrayList<ArcOp> newRootChildren = new ArrayList<ArcOp>(Math.min(maxSize,rootChildList.size()));
@@ -104,9 +104,9 @@ public final class ArcOpShard extends MemoStorable {
 				newChildren.clear();
 				newRootParents.clear();
 				newRootChildren.clear();
-				if (parent != null) newRootParents.add(parent);
-				if (child != null) newRootChildren.add(child);
 			}
+			if (parent != null) newRootParents.add(parent);
+			if (child != null) newRootChildren.add(child);
 		}
 		if (newParents.size()>0 || newChildren.size()>0||newRootParents.size()>0||newRootChildren.size()>0){
 			ArcOpShard shard = new ArcOpShard(newParents,newChildren,newRootParents,newRootChildren);
@@ -122,12 +122,22 @@ public final class ArcOpShard extends MemoStorable {
 			other.delete();
 		}
 	}
-		
+	public void setSpread(){
+		long parTime = parentArray.length>0?parentArray[parentArray.length-1].getParentTime():0;
+		long chldTime = childArray.length>0?childArray[childArray.length-1].getChildTime():0;
+		long newest = Math.max(parTime, chldTime);
+		parTime = parentArray.length>0?parentArray[0].getParentTime():newest;
+		chldTime = childArray.length>0?childArray[0].getChildTime():newest;
+		long oldest = Math.min(parTime, chldTime);
+		this.storeTime = newest;
+		this.spread = newest-oldest;
+	}
 	public ArcOpShard(ArrayList<ArcOp> parentList,ArrayList<ArcOp> childList,ArrayList<ArcOp> rootParentList, ArrayList<ArcOp> rootChildList){
 		parentArray = parentList.toArray(new ArcOp[0]);
 		childArray = childList.toArray(new ArcOp[0]);
 		rootParentArray = rootParentList.toArray(new ArcOp[0]);
 		rootChildArray = rootChildList.toArray(new ArcOp[0]);
+		setSpread();
 	}
 	public ArcOpShard(ArcOpBuffer buffer){
 		ArcOp[] tmp = buffer.getParentOps().toArray(new ArcOp[0]);
@@ -152,6 +162,7 @@ public final class ArcOpShard extends MemoStorable {
 			rootChildArray = new ArcOp[0];
 			childArray = tmp;		
 		}
+		setSpread();
 	}
 	public ImmutableList<ArcOp> getChildOps(UUID id) {
 		if (id.time == 0){
@@ -159,7 +170,7 @@ public final class ArcOpShard extends MemoStorable {
 		}
 		int pivot = Arrays.binarySearch(childArray, new ArcOp(OpsType.ADD,id,id,0),childCmp);
 		if (pivot<0) {
-			System.out.println("Ops not found:"+pivot);
+//			System.out.println("Ops not found:"+pivot);
 			return ImmutableList.of();
 		}
 		Builder<ArcOp> resBuilder = ImmutableList.builder();
@@ -180,7 +191,7 @@ public final class ArcOpShard extends MemoStorable {
 		}
 		int pivot = Arrays.binarySearch(parentArray, new ArcOp(OpsType.ADD,id,id,0),parentCmp);
 		if (pivot<0) {
-			System.out.println("Ops not found:"+pivot);
+//			System.out.println("Ops not found:"+pivot);
 			return ImmutableList.of();
 		}
 		Builder<ArcOp> resBuilder = ImmutableList.builder();

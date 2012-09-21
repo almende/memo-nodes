@@ -399,17 +399,37 @@ public class MemoNode implements Comparable<MemoNode> {
 		return Math.max(this.value.getTimestamp_long(),Math.max(this.children.getTimestamp_long(),this.parents.getTimestamp_long()));
 	}
 	/**
+	 * Returns the list of the uuids of direct parent nodes. 
+	 * Use this to count the amount of parents, i.s.o. the getParents.
+	 * (which is way more expensive.) 
+	 * 
+	 * @return ImmutableList<UUID> parentIds
+	 */
+	public ImmutableList<UUID> getParentIds(){
+		return ImmutableList.copyOf(this.parents.getNodesIds());
+	}
+	/**
 	 * Returns the list of direct parent nodes. 
 	 * 
-	 * @return ArrayList<MemoNode> parents
+	 * @return ImmutableList<MemoNode> parents
 	 */
 	public ImmutableList<MemoNode> getParents(){
 		return this.parents.getNodes();
 	}
 	/**
+	 * Returns the list of the uuids of direct child nodes. 
+	 * Use this to count the amount of children, i.s.o. the getChildren.
+	 * (which is way more expensive.) 
+	 * 
+	 * @return ImmutableList<UUID> childIds
+	 */
+	public ImmutableList<UUID> getChildIds(){
+		return ImmutableList.copyOf(this.children.getNodesIds());
+	}
+	/**
 	 * Returns the list of direct child nodes. 
 	 * 
-	 * @return ArrayList<MemoNode> children
+	 * @return ImmutableList<MemoNode> children
 	 */
 	public ImmutableList<MemoNode> getChildren(){
 		return this.children.getNodes();
@@ -422,9 +442,10 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @return ArrayList<MemoNode> children
 	 */
 	public ArrayList<MemoNode> getChildrenByStringValue(String value, int topx){
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
+		UUID[] childids = this.children.getNodesIds();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?topx:10);
+		for (UUID childid : childids) {
+			MemoNode child = new MemoNode(childid);
 			if (child.getStringValue().equals(value)) {
 				result.add(child);
 				if (topx > 0 && result.size() >= topx)
@@ -456,9 +477,10 @@ public class MemoNode implements Comparable<MemoNode> {
 	 * @return ArrayList<MemoNode> children
 	 */
 	public ArrayList<MemoNode> getChildrenByRegEx(Pattern regex, int topx){
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
+		UUID[] childids = this.children.getNodesIds();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?topx:10);
+		for (UUID uuid: childids) {
+			MemoNode child = new MemoNode(uuid);
 			if (regex.matcher(child.getStringValue()).matches()) {
 				result.add(child);
 				if (topx > 0 && result.size() >= topx)
@@ -478,9 +500,10 @@ public class MemoNode implements Comparable<MemoNode> {
 	 */
 	public ArrayList<MemoNode> getChildrenByRange(int lower, int upper, int topx){
 		//TODO: store integers differently? Not as String...
-		ArrayList<MemoNode> result = new ArrayList<MemoNode>(
-				this.children.getLength());
-		for (MemoNode child : getChildren()) {
+		UUID[] childids = this.children.getNodesIds();
+		ArrayList<MemoNode> result = new ArrayList<MemoNode>(topx>0?topx:10);
+		for (UUID uuid: childids) {
+			MemoNode child = new MemoNode(uuid);
 			try {
 				int value = Integer.parseInt(child.getStringValue());
 				if (value >= lower && value <= upper) {
@@ -727,8 +750,8 @@ public class MemoNode implements Comparable<MemoNode> {
 	}
 
 	private void toJSON(int depth,JSONTuple result) {
-		if (result.getSeenNodes().contains(this)) return;
-		result.getSeenNodes().add(this);
+		if (result.getSeenNodes().contains(this.uuid)) return;
+		result.getSeenNodes().add(this.uuid);
 		ObjectNode node = om.createObjectNode();
 		node.put("id", this.getId().toString());
 		node.put("title", this.getStringValue());

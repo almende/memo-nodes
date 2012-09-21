@@ -1,7 +1,5 @@
 package com.chap.memo.memoNodes.storage;
 
-import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
-
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -9,14 +7,9 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-//import java.util.zip.GZIPInputStream;
-//import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -27,9 +20,6 @@ import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Key;
-import com.google.appengine.api.datastore.PreparedQuery;
-import com.google.appengine.api.datastore.Query;
-import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
@@ -50,6 +40,7 @@ public abstract class MemoStorable implements Serializable,
 	long storeTime;
 	long nanoTime;
 	transient int storedSize;
+	public long spread;
 	
 	public int getStoredSize(){
 		return storedSize;
@@ -88,7 +79,7 @@ public abstract class MemoStorable implements Serializable,
 		try {
 			ZipInputStream zis = new ZipInputStream(bis);
 			zis.getNextEntry();
-			BufferedInputStream bus = new BufferedInputStream(zis,size>0?size:1500000);
+			BufferedInputStream bus = new BufferedInputStream(zis,size>0?size:15000);
 			ObjectInputStream ios = new ObjectInputStream(bus);
 //			ios.readInt();
 //			System.out.println("Non-blocking available: "+bis.available()+":"+zis.available()+":"+bus.available());
@@ -197,6 +188,7 @@ public abstract class MemoStorable implements Serializable,
 			ent.setUnindexedProperty("next", next);
 		ent.setProperty("timestamp", this.storeTime);
 		ent.setProperty("size", length);
+		ent.setProperty("spread",this.spread);
 		datastore.put(ent);
 //		counter++;
 		myKey = ent.getKey();
@@ -216,10 +208,13 @@ public abstract class MemoStorable implements Serializable,
 		byte[] result;
 		Key key = ent.getKey();
 		int size=0;
+		long spread = 0;
 //		int count=0;
 		try {
 			Blob blob = (Blob) ent.getProperty("payload");
 			size = (int)((Long) ent.getProperty("size")%Integer.MAX_VALUE);
+			spread = ((Long) ent.getProperty("spread"));
+			
 			byte[] data = blob.getBytes();
 			result = Arrays.copyOf(data, data.length);
 //			count++;
@@ -238,6 +233,7 @@ public abstract class MemoStorable implements Serializable,
 			return null;
 		}
 		MemoStorable res = _unserialize(result,size);
+		res.spread = spread;
 		res.storedSize=result.length;
 		if (res != null) res.myKey = key;
 		return res;
@@ -253,25 +249,6 @@ public abstract class MemoStorable implements Serializable,
 		} catch (EntityNotFoundException e) {
 			return null;
 		}
-	}
-
-	public static ArrayList<MemoStorable> getChanges(String type, Date after) {
-
-//		Query q = new Query(type).setFilter(new Query.FilterPredicate("timestamp",
-//				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime()));
-		Query q = new Query(type).addFilter("timestamp",
-				FilterOperator.GREATER_THAN_OR_EQUAL, after.getTime());
-
-		PreparedQuery pq = datastore.prepare(q);
-		ArrayList<MemoStorable> result = new ArrayList<MemoStorable>(
-				pq.countEntities(withLimit(1000)));
-		Iterator<Entity> iter = pq.asIterator();
-		while (iter.hasNext()) {
-			Entity ent = iter.next();
-			MemoStorable obj = load(ent);
-			if (obj != null) result.add(load(ent));
-		}
-		return result;
 	}
 
 	public long getStoreTime() {

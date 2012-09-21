@@ -16,6 +16,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import com.chap.memo.memoNodes.MemoNode;
+import com.chap.memo.memoNodes.MemoUtils;
 import com.chap.memo.memoNodes.model.ArcOp;
 import com.chap.memo.memoNodes.model.ArcOpBuffer;
 import com.chap.memo.memoNodes.model.NodeValue;
@@ -50,11 +51,13 @@ public class MemoReadBus {
 	long maxWeight = Runtime.getRuntime().maxMemory() / 4;
 	
 	LoadingCache<Key, NodeValueShard> NodeValueShards = CacheBuilder
-			.newBuilder().concurrencyLevel(1).maximumWeight(maxWeight)
+			
+			.newBuilder().maximumWeight(maxWeight)
+//			.concurrencyLevel(1)
 			.weigher(new Weigher<Key, NodeValueShard>() {
 				public int weigh(Key key, NodeValueShard shard) {
 //					System.out.println("NodeValue Shard is "+shard.getSize()+"/"+shard.getStoredSize()+" bytes ("+(shard.getStoredSize()*100)/shard.getSize()+"%) into cache:"+NodeValueShards.size());
-					return shard.getSize()*5; 
+					return shard.getSize()*2; 
 				}
 			}).build(new CacheLoader<Key, NodeValueShard>() {
 				public NodeValueShard load(Key key) {
@@ -65,7 +68,8 @@ public class MemoReadBus {
 				}
 			});
 	LoadingCache<Key, ArcOpShard> ArcOpShards = CacheBuilder.newBuilder()
-			.concurrencyLevel(1).maximumWeight(maxWeight)
+//			.concurrencyLevel(1)
+			.maximumWeight(maxWeight)
 			.weigher(new Weigher<Key, ArcOpShard>() {
 				public int weigh(Key key, ArcOpShard shard) {
 //					System.out.println("ArcOp Shard is "+shard.getSize()+"/"+shard.getStoredSize()+" bytes ("+(shard.getStoredSize()*100)/shard.getSize()+"%) into cache:"+ArcOpShards.size());
@@ -206,7 +210,7 @@ public class MemoReadBus {
 						100000);
 
 				// ObjectOutputStream oos = new ObjectOutputStream(out);
-				Query q = new Query("NodeValueShard");
+				Query q = new Query("NodeValueShard").addSort("timestamp");
 				PreparedQuery prep = datastore.prepare(q);
 				Iterator<Entity> iter = prep.asIterable().iterator();
 				writer.append("[");
@@ -280,7 +284,7 @@ public class MemoReadBus {
 
 				count = 0;
 				writer.append("[");
-				Query q = new Query("ArcOpShard");
+				Query q = new Query("ArcOpShard").addSort("timestamp");;
 				PreparedQuery prep = datastore.prepare(q);
 				Iterator<Entity> iter = prep.asIterable().iterator();
 				while (iter.hasNext()) {
@@ -384,7 +388,7 @@ public class MemoReadBus {
 	}
 
 	void loadIndexes(boolean clear) {
-		// System.out.println("reloading indexes:" + clear);
+//		System.out.println("reloading indexes:" + clear);
 		// long start = System.currentTimeMillis();
 
 		synchronized (NodeValueIndexes) {
@@ -417,7 +421,7 @@ public class MemoReadBus {
 				QueryResultList<Entity> rl = NodeValueIndexQuery
 						.asQueryResultList(withLimit(10000));
 				if (rl.size() > 0) {
-					NodeValueShards.invalidateAll();
+					//NodeValueShards.invalidateAll();
 					NodeValueIndexes.clear();
 					for (Entity ent : rl) {
 						MemoStorable obj = MemoStorable.load(ent);
@@ -430,11 +434,12 @@ public class MemoReadBus {
 				}
 				Collections.sort(NodeValueIndexes, Collections.reverseOrder());
 
-				q = new Query("ArcOpIndex").addSort("timestamp");
+				q = new Query("ArcOpIndex").addSort("timestamp",
+						Query.SortDirection.DESCENDING);
 				PreparedQuery ArcOpIndexQuery = datastore.prepare(q);
 				rl = ArcOpIndexQuery.asQueryResultList(withLimit(10000));
 				if (rl.size() > 0) {
-					ArcOpShards.invalidateAll();
+					//ArcOpShards.invalidateAll();
 					ArcOpIndexes.clear();
 					for (Entity ent : rl) {
 						ArcOpIndex index = (ArcOpIndex) MemoStorable.load(ent);
@@ -460,8 +465,8 @@ public class MemoReadBus {
 
 	public synchronized void mergeNodeValueShards() {
 		System.out.println("mergeNodeValueShards called!");
-		Query q = new Query("NodeValueShard").addSort("size",
-				Query.SortDirection.ASCENDING);
+		Query q = new Query("NodeValueShard").addSort("spread",
+				Query.SortDirection.DESCENDING);
 		ArrayList<NodeValueShard> list = new ArrayList<NodeValueShard>(500);
 		int size = 0;
 		PreparedQuery shardsQuery = datastore.prepare(q);
@@ -471,7 +476,7 @@ public class MemoReadBus {
 			Entity ent = iter.next();
 			System.out.println("Checking entity: " + ent.getProperty("size")
 					+ ":" + size);
-			if (size + (Long) ent.getProperty("size") <= NodeValueBuffer.STORESIZE) {
+			if (size + (Long) ent.getProperty("size") <= NodeValueBuffer.STORESIZE*10) { //not too many to prevent OOM
 				size += (Long) ent.getProperty("size");
 				list.add((NodeValueShard) MemoStorable.load(ent));
 			} else {
@@ -488,8 +493,8 @@ public class MemoReadBus {
 
 	public synchronized void mergeArcOpShards() {
 		System.out.println("mergeArcOpShards called!");
-		Query q = new Query("ArcOpShard").addSort("size",
-				Query.SortDirection.ASCENDING);
+		Query q = new Query("ArcOpShard").addSort("spread",
+				Query.SortDirection.DESCENDING);
 		ArrayList<ArcOpShard> list = new ArrayList<ArcOpShard>(100);
 		int size = 0;
 		PreparedQuery shardsQuery = datastore.prepare(q);
@@ -497,8 +502,8 @@ public class MemoReadBus {
 				.iterator();
 		while (iter.hasNext()) {
 			Entity ent = iter.next();
-			System.out.println("Checking entity: " + ent.getProperty("size")
-					+ ":" + size);
+//			System.out.println("Checking entity: " + ent.getProperty("size")
+//					+ ":" + size);
 			if (size + (Long) ent.getProperty("size") <= ArcOpBuffer.STORESIZE*10) {//Not too many to prevent OOM
 				size += (Long) ent.getProperty("size");
 				list.add((ArcOpShard) MemoStorable.load(ent));
@@ -531,6 +536,7 @@ public class MemoReadBus {
 		// }
 		synchronized (ArcOpIndexes) {
 			ArcOpIndexes.add(index);
+			Collections.sort(ArcOpIndexes, Collections.reverseOrder());
 		}
 		lastOpsChange = System.currentTimeMillis();
 		memCache.put("memoNodes_lastUpdate", lastOpsChange);
@@ -549,16 +555,19 @@ public class MemoReadBus {
 	}
 
 	public ArrayList<NodeValueShard> getSparseNodeValueShards(long room) {
-		ArrayList<NodeValueShard> result = new ArrayList<NodeValueShard>((int) NodeValueShards.size());
+		ArrayList<NodeValueShard> result = new ArrayList<NodeValueShard>(Math.min((int) NodeValueShards.size(), 10));
 		Iterator<NodeValueShard> iter;
 		iter = ImmutableMap.copyOf(NodeValueShards.asMap()).values().iterator();
+		int maxSize = NodeValueBuffer.STORESIZE*10;
 		while (iter.hasNext()) {
 			NodeValueShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.getStoredSize() < NodeValueBuffer.STORESIZE - room) {
+			if (shard.spread > 100000) {
+				maxSize-=shard.getStoredSize();
 				result.add(shard);
 			}
+			if (maxSize<0 || result.size()>10) break;
 		}
 		return result;
 	}
@@ -567,13 +576,16 @@ public class MemoReadBus {
 		ArrayList<ArcOpShard> result = new ArrayList<ArcOpShard>((int) ArcOpShards.size());
 		Iterator<ArcOpShard> iter;
 		iter = ImmutableMap.copyOf(ArcOpShards.asMap()).values().iterator();
+		int maxSize = ArcOpBuffer.STORESIZE*10;
 		while (iter.hasNext()) {
 			ArcOpShard shard = iter.next();
 			if (shard.isDeleted())
 				continue;
-			if (shard.getStoredSize() < ArcOpBuffer.STORESIZE - room) {
+			if (shard.spread > 100000) {
+				maxSize-=shard.getStoredSize();
 				result.add(shard);
 			}
+			if (maxSize<0 || result.size()>10) break;
 		}
 		return result;
 	}
@@ -585,8 +597,8 @@ public class MemoReadBus {
 				NodeValueIndex index = iter.next();
 				if (index.getShardKey().equals(shardKey)) {
 					iter.remove();
-					System.out.println("Removed index from NodeValueIndexes:"
-							+ NodeValueIndexes.size());
+//					System.out.println("Removed index from NodeValueIndexes:"
+//							+ NodeValueIndexes.size());
 					return index;
 				}
 			}
@@ -601,8 +613,8 @@ public class MemoReadBus {
 				ArcOpIndex index = iter.next();
 				if (index.getShardKey().equals(shardKey)) {
 					iter.remove();
-					System.out.println("Removed index from ArcOpIndexes:"
-							+ ArcOpIndexes.size());
+//					System.out.println("Removed index from ArcOpIndexes:"
+//							+ ArcOpIndexes.size());
 					return index;
 				}
 			}
@@ -660,7 +672,7 @@ public class MemoReadBus {
 								.println("Warning, even after 10 retries no shard found!");
 						index.delete(true);
 					}
-
+					System.out.println("retry loadIndexes for value shard."+uuid);
 					loadIndexes(true);
 					return findAll(uuid, retryCount + 1);
 				}
@@ -685,15 +697,15 @@ public class MemoReadBus {
 
 	public NodeValue getValue(UUID uuid, long timestamp, int retryCount) {
 		NodeValue result = null;
-		System.out.println("Looking for value of:"+uuid.toString());
+//		System.out.println("Looking for value of:"+uuid.toString());
 		MemoWriteBus writeBus = MemoWriteBus.getBus();
 		result = writeBus.values.findBefore(uuid, timestamp);
-		if (result != null) System.out.println("Found in writeBus:"+new String(result.getValue()));
+//		if (result != null) System.out.println("Found in writeBus:"+new String(result.getValue()));
 		
 		ImmutableList<NodeValueIndex> copy;
 		synchronized (NodeValueIndexes) {
 			if (NodeValueIndexes.size() == 0) {
-				System.out.println("Indexes empty, returning writeBus val");
+//				System.out.println("Indexes empty, returning writeBus val");
 				return result;
 			}
 			copy = ImmutableList.copyOf(NodeValueIndexes);
@@ -703,12 +715,12 @@ public class MemoReadBus {
 			NodeValueIndex index = iter.next();
 			if (result != null
 					&& index.getNewest() < result.getTimestamp_long()) {
-				System.out.println("next index older than earlier found value");
+//				System.out.println("next index older than earlier found value");
 				return result;
 			}
-			System.out.println("Checking index:"+index.getOldest()+ " "+ timestamp + " "+ uuid.toString());
+//			System.out.println("Checking index:"+index.getOldest()+ " "+ timestamp + " "+ uuid.toString());
 			if (index.getOldest() < timestamp && index.contains(uuid)) {
-				System.out.println("Found an index entry!");
+//				System.out.println("Found an index entry!");
 				NodeValueShard shard = null;
 				try {
 					shard = NodeValueShards.getUnchecked(index.getShardKey());
@@ -726,28 +738,28 @@ public class MemoReadBus {
 										+ uuid);
 						index.delete(true);
 					}
-//					System.out.println("retry loadIndexes for value shard."+uuid);
+					System.out.println("retry loadIndexes for value shard."+uuid);
 					loadIndexes(true);
 					return getValue(uuid, timestamp, retryCount + 1);
 				}
 				if (shard != null) {
-					System.out.println("Here?");
+//					System.out.println("Here?");
 					NodeValue res = shard.findBefore(uuid, timestamp);
 					if (res == null) {
-						System.out.println("Value wasn't in this shard, trying next."+uuid);
+//						System.out.println("Value wasn't in this shard, trying next."+uuid);
 						continue;
 					}
 					if (result == null
 							|| res.getTimestamp_long() > result
 									.getTimestamp_long()) {
-						System.out.println("New value found in shard:"+new String(res.getValue()));
+//						System.out.println("New value found in shard:"+new String(res.getValue()));
 						result = res;
 					}
 				}
 			}
 		}
 		//System.out.println("Normal return:"+uuid+":"+new String(result.getValue()));
-		if (result == null) System.out.println("Warning, couldn't find value anywhere! Returning null");
+//		if (result == null) System.out.println("Warning, couldn't find value anywhere! Returning null");
 		return result;
 	}
 
@@ -772,8 +784,7 @@ public class MemoReadBus {
 			List<ArcOp> children = MemoWriteBus.getBus().ops.getChildOps(uuid);
 			wbresult.ensureCapacity(wbresult.size() + children.size() + 1);
 			for (ArcOp op : children) {
-				if (op.getTimestamp_long() <= timestamp
-						&& op.getTimestamp_long() >= since) {
+				if (op.getTimestamp_long() <= timestamp) {
 					wbresult.add(op);
 				}
 			}
@@ -782,16 +793,14 @@ public class MemoReadBus {
 			List<ArcOp> parents = MemoWriteBus.getBus().ops.getParentOps(uuid);
 			wbresult.ensureCapacity(wbresult.size() + parents.size() + 1);
 			for (ArcOp op : parents) {
-				if (op.getTimestamp_long() <= timestamp
-						&& op.getTimestamp_long() >= since) {
+				if (op.getTimestamp_long() <= timestamp) {
 					wbresult.add(op);
 				}
 			}
 			break;
 		}
 		synchronized (ArcOpIndexes) {
-			if (ArcOpIndexes.size() > 0
-					&& ArcOpIndexes.get(ArcOpIndexes.size() - 1).getStoreTime() >= since) {
+			if (ArcOpIndexes.size() > 0) {
 				doIndexes = true;
 				copy = ImmutableList.copyOf(ArcOpIndexes);
 			}
@@ -800,7 +809,7 @@ public class MemoReadBus {
 			Iterator<ArcOpIndex> iter = copy.iterator();
 			while (iter.hasNext()) {
 				ArcOpIndex index = iter.next();
-				if (uuid.time >0 && index.getStoreTime() > uuid.time) {
+				if (uuid.time != 0 && index.getStoreTime() < MemoUtils.gettime(uuid)) {
 					break;
 				}
 				switch (type) {
@@ -844,7 +853,7 @@ public class MemoReadBus {
 					break;
 				case 1: // parentList, UUID is child
 					if (index.containsParent(uuid)) {
-//						System.out.println("index:"+index.getMyKey()+ "contains:"+uuid);
+						//						System.out.println("index:"+index.getMyKey()+ "contains:"+uuid);
 						ArcOpShard shard = null;
 						try {
 							shard = ArcOpShards.getUnchecked(index
