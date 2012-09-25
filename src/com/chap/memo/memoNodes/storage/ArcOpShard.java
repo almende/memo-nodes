@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 import com.chap.memo.memoNodes.bus.MemoReadBus;
 import com.chap.memo.memoNodes.model.ArcOp;
@@ -25,6 +28,49 @@ public final class ArcOpShard extends MemoStorable {
 	transient private static final ChildCmp childCmp = new ChildCmp();
 	transient private static final ParentCmp parentCmp = new ParentCmp();
 
+	private static void addCmp (ArcOp op,HashMap<UUIDTuple,ArcOp> map){
+		UUIDTuple tup = new UUIDTuple(op.getParent(),op.getChild());
+		if (!map.containsKey(tup) || map.get(tup).getTimestamp_long()< op.getTimestamp_long()){
+			map.put(tup,op);
+		}
+	}
+	public static void dropHistory(ArcOpShard shard) {
+		MemoReadBus ReadBus = MemoReadBus.getBus();
+		
+		System.out.println("Before:"+shard.parentArray.length+":"+shard.childArray.length+":"+shard.rootParentArray.length+":"+shard.rootChildArray.length);
+		LinkedHashMap<UUIDTuple,ArcOp> map = new LinkedHashMap<UUIDTuple,ArcOp>(shard.getSize()/(2* ArcOpBuffer.BYTESPEROP));
+		for (ArcOp op : shard.parentArray){
+			addCmp(op,map);
+		}
+		List<ArcOp> parents = ImmutableList.copyOf(map.values());
+		map.clear();
+		for (ArcOp op : shard.rootParentArray){
+			addCmp(op,map);
+		}
+		List<ArcOp> rootParents = ImmutableList.copyOf(map.values());
+		map.clear();
+		for (ArcOp op : shard.childArray){
+			addCmp(op,map);
+		}
+		List<ArcOp> children = ImmutableList.copyOf(map.values());
+		map.clear();
+		for (ArcOp op : shard.rootChildArray){
+			addCmp(op,map);
+		}
+		List<ArcOp> rootChildren = ImmutableList.copyOf(map.values());
+		
+		ArcOpShard newShard = new ArcOpShard(parents,children,rootParents,rootChildren);
+		ArcOpIndex index = new ArcOpIndex(newShard);
+		ReadBus.addOpsIndex(index, newShard);
+		System.out.println("After:"+newShard.parentArray.length+":"+newShard.childArray.length+":"+newShard.rootParentArray.length+":"+newShard.rootChildArray.length);
+		
+		ArcOpIndex idx = ReadBus.removeArcOpIndexByShard(shard
+				.getMyKey());
+		if (idx != null) idx.delete();
+		ReadBus.delShard(shard);
+		shard.delete();
+	}
+	
 	public static void devideAndMerge(ArcOpShard[] shards){
 		if (shards.length <= 1) return;
 		System.out.println("Merging "+shards.length+" arcOp shards");
@@ -132,7 +178,7 @@ public final class ArcOpShard extends MemoStorable {
 		this.storeTime = newest;
 		this.spread = newest-oldest;
 	}
-	public ArcOpShard(ArrayList<ArcOp> parentList,ArrayList<ArcOp> childList,ArrayList<ArcOp> rootParentList, ArrayList<ArcOp> rootChildList){
+	public ArcOpShard(List<ArcOp> parentList,List<ArcOp> childList,List<ArcOp> rootParentList, List<ArcOp> rootChildList){
 		parentArray = parentList.toArray(new ArcOp[0]);
 		childArray = childList.toArray(new ArcOp[0]);
 		rootParentArray = rootParentList.toArray(new ArcOp[0]);
@@ -228,5 +274,23 @@ class ParentCmp implements Comparator<ArcOp>{
 class ChildCmp implements Comparator<ArcOp>{
 	public int compare(ArcOp a,ArcOp b) {
 		return a.getChild().time==b.getChild().time?0:(a.getChildTime()>b.getChildTime()?1:-1);
+	}
+}
+class UUIDTuple {
+	public UUID parent=null;
+	public UUID child =null;
+	public UUIDTuple(UUID parent, UUID child){
+		this.parent=parent;
+		this.child=child;
+	}
+	public int hashCode(){
+		return (parent.hashCode()+child.hashCode())%Integer.MAX_VALUE;
+	}
+	public boolean equals(Object o){
+		if (o instanceof UUIDTuple){
+			UUIDTuple other = (UUIDTuple) o;
+			if (other.parent.equals(parent) && other.child.equals(child)) return true;
+		}
+		return false;
 	}
 }

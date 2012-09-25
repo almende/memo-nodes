@@ -49,11 +49,6 @@ public class ArcList {
 
 	public UUID[] getNodesIds(){
 		synchronized (this) {
-			boolean debug=false;
-			if (nodeId.equals(new UUID("0003bc70-03f2-11e2-90bf-ac7289d75e0b"))){
-				System.out.println("Calling getNodesIds for debug node:"+(this.arcops!=null?this.arcops:"null")+" : "+((MemoUtils.gettime(nodeId)-0x01B21DD213814000L)/10000)+" / "+lastUpdate);
-				debug=true;
-			}
 			if (readBus.opsChanged(lastUpdate)) this.arcops = null;
 			if (this.arcops == null) {
 				this.arcops = readBus.getOps(nodeId, type, 0);
@@ -68,26 +63,17 @@ public class ArcList {
 				lastUpdate = System.currentTimeMillis();
 //			}
 			if (arcops == null){
-				if (debug) System.out.println("returning empty!");
 				return new UUID[0];
 			}
 			HashMap<UUID,ArcOp> list = new HashMap<UUID,ArcOp>(arcops.size() / 2);
-			if (debug) System.out.println("arcops size: "+arcops.size()+" "+arcops);
 			for (ArcOp op : arcops) {
 				if (op.timestamp > this.timestamp) this.timestamp = op.timestamp;
-				if (op.getChild().equals(new UUID("0003bc70-03f2-11e2-90bf-ac7289d75e0b"))){
-					System.out.println("Debug2:"+this.type+" = "+op.toString());
-					//debug=true;
-				}
 				ArcOp otherOp = list.get(op.get(this.type));
 				if (otherOp != null){
-					if (debug) System.out.println("exists!");
 					if (op.timestamp<otherOp.timestamp){
-						if (debug) System.out.println("older!");
 						continue;
 					}					
 				}
-				if (debug) System.out.println("Adding!"+op.toString());
 				list.put(op.get(this.type),op);
 			}
 			List<UUID> result = new ArrayList<UUID>(list.size());
@@ -136,9 +122,6 @@ public class ArcList {
 		arc[Math.abs(this.type - 1)] = this.nodeId;
 
 		ArcOp op = new ArcOp(OpsType.DELETE, arc, System.currentTimeMillis());
-		if (nodeId.equals(new UUID("0003bc70-03f2-11e2-90bf-ac7289d75e0b"))){
-			System.out.println("Debug: deleting node:"+op.toString());
-		}
 		writeBus.store(op);
 		synchronized (this) {
 			arcops.add(op);

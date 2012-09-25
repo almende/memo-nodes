@@ -3,7 +3,6 @@ package com.chap.memo.memoNodes.servlet;
 import static com.google.appengine.api.taskqueue.TaskOptions.Builder.withUrl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -323,7 +322,31 @@ public class MemoTestServlet extends HttpServlet {
 
 			log(resp, true, "\nMerge shards test, compacting DB:");
 			MemoNode.compactDB();
+			
+			log(resp, (first.getChildren().size() == 2),
+					"Parent has two children", ":" + first.getId() + ":"
+							+ first.getChildren().size());
+			log(resp, (first.getParents().size() == 0),
+					"Parent has no parents", ":" + first.getId() + ":"
+							+ first.getParents().size());
+			log(resp, (second.getParents().size() == 1),
+					"First child has one parent", ":" + second.getId() + ":"
+							+ second.getParents().size());
+			log(resp, (third.getParents().size() == 1),
+					"Second child has one parent", ":" + third.getId() + ":"
+							+ third.getParents().size());
+			log(resp, true, "First child found", ": " + first.getId() + "|"
+					+ first.getChildren().get(0).getId() + "/"
+					+ first.getChildren().get(0).getStringValue());
+			log(resp, true, "Second child found", ": " + first.getId() + "|"
+					+ first.getChildren().get(1).getId() + "/"
+					+ first.getChildren().get(1).getStringValue());
 
+			log(resp, true, "\nDrop History test.");
+			MemoNode.flushDB();
+			MemoNode.dropHistory();
+			MemoNode.flushDB();
+			
 			log(resp, (first.getChildren().size() == 2),
 					"Parent has two children", ":" + first.getId() + ":"
 							+ first.getChildren().size());
@@ -455,6 +478,7 @@ public class MemoTestServlet extends HttpServlet {
 			log(resp, true,
 					" Db compacted:" + (System.currentTimeMillis() - time)
 							+ " ms");
+			
 			
 			long arcStart = System.currentTimeMillis();
 			log(resp, true, "\nPerformance test: Breadth (" + nofArcs + ")");
@@ -588,7 +612,7 @@ public class MemoTestServlet extends HttpServlet {
 
 			HashMap<String, String> arguments = new HashMap<String, String>(2);
 			arguments.put("Number", "Eight");
-			ArrayList<MemoNode> result = startNode.search(algorithm, -1,
+			List<MemoNode> result = startNode.search(algorithm, -1,
 					arguments);
 			if (debug) {
 				for (MemoNode res : result) {

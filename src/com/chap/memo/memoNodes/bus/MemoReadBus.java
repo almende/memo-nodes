@@ -48,7 +48,8 @@ import com.google.common.collect.ImmutableMap;
 
 public class MemoReadBus {
 	static final ObjectMapper om = new ObjectMapper();
-	long maxWeight = Runtime.getRuntime().maxMemory() / 4;
+//	long maxWeight = Runtime.getRuntime().maxMemory() / 5;
+	long maxWeight = 24929894;
 	
 	LoadingCache<Key, NodeValueShard> NodeValueShards = CacheBuilder
 			
@@ -99,102 +100,28 @@ public class MemoReadBus {
 		loadIndexes(false);
 	};
 
-//	public void dropHistory() {
-//		synchronized (NodeValueIndexes) {
-//			HashMap<UUID, NodeValue> newestNodeValues = new HashMap<UUID, NodeValue>(
-//					100000);
-//
-//			// ObjectOutputStream oos = new ObjectOutputStream(out);
-//			Query q = new Query("NodeValueShard");
-//			PreparedQuery prep = datastore.prepare(q);
-//			Iterator<Entity> iter = prep.asIterable().iterator();
-//			while (iter.hasNext()) {
-//				Entity ent = iter.next();
-//				NodeValueShard shard = (NodeValueShard) MemoStorable.load(ent);
-//				Iterator<NodeValue> inner = Arrays.asList(shard.getNodes()).iterator();
-//				while (inner.hasNext()) {
-//					NodeValue nv = inner.next();
-//					if (newestNodeValues.containsKey(nv.getId())) {
-//						NodeValue other = newestNodeValues.get(nv.getId());
-//						if (other.compareTo(nv) < 0) { // other older
-//														// than current?
-//							newestNodeValues.put(nv.getId(), nv);
-//							nv = other; // export other, i.s.o. current
-//						}
-//					} else {
-//						newestNodeValues.put(nv.getId(), nv);
-//					}
-//				}
-//			}
-//
-//			if (newestNodeValues.size() > 0) {
-//				NodeValue[] list = newestNodeValues.values().toArray(
-//						new NodeValue[0]);
-//				Arrays.sort(list);
-//
-//				MemoWriteBus writeBus = MemoWriteBus.getBus();
-//				MemoWriteBus.emptyDB(new String[] { "NodeValueIndex",
-//						"NodeValueShard" });
-//				for (NodeValue val : list) {
-//					if (val.getValue().length >= 0) {
-//						writeBus.store(val);
-//					}
-//				}
-//				MemoNode.flushDB();
-//				loadIndexes(true);
-//			}
-//		}
-//		synchronized (ArcOpIndexes) {
-//			ArrayListMultimap<Long, ArcOp> newestArcOps = ArrayListMultimap
-//					.create();
-//			Query q = new Query("ArcOpShard");
-//			PreparedQuery prep = datastore.prepare(q);
-//			Iterator<Entity> iter = prep.asIterable().iterator();
-//			while (iter.hasNext()) {
-//				Entity ent = iter.next();
-//				ArcOpShard shard = (ArcOpShard) MemoStorable.load(ent);
-//				Iterator<ArcOp> inner = Arrays.asList(shard.getOps()).iterator();
-//				while (inner.hasNext()) {
-//					ArcOp ao = inner.next();
-//					List<ArcOp> res = newestArcOps.removeAll(ao
-//							.getTimestamp_long());
-//					if (res.size() > 0) {
-//						List<ArcOp> newList = new ArrayList<ArcOp>(res.size());
-//						for (ArcOp other : res) {
-//							if (other.getChild().equals(ao.getChild())
-//									&& other.getParent().equals(ao.getParent())) {
-//								if (other.compareTo(ao) < 0) { // other older than current?
-//									ArcOp tmp = other; // swap
-//									other = ao;
-//									ao = tmp;
-//								}
-//							}
-//							newList.add(other);
-//						}
-//						newList.add(ao);
-//						newestArcOps.putAll(ao.getTimestamp_long(), newList);
-//					} else {
-//						newestArcOps.put(ao.getTimestamp_long(), ao);
-//					}
-//				}
-//			}
-//			if (newestArcOps.size() > 0) {
-//				ArcOp[] list = newestArcOps.values().toArray(new ArcOp[0]);
-//				Arrays.sort(list);
-//
-//				MemoWriteBus writeBus = MemoWriteBus.getBus();
-//				MemoWriteBus
-//						.emptyDB(new String[] { "ArcOpIndex", "ArcOpShard" });
-//				for (ArcOp val : list) {
-//					if (val.getType().equals(OpsType.ADD)) {
-//						writeBus.store(val);
-//					}
-//				}
-//				MemoNode.flushDB();
-//				loadIndexes(true);
-//			}
-//		}
-//	}
+	public void dropHistory() {
+		synchronized (NodeValueIndexes) {
+			Query q = new Query("NodeValueShard");
+			PreparedQuery prep = datastore.prepare(q);
+			Iterator<Entity> iter = prep.asIterable().iterator();
+			while (iter.hasNext()) {
+				Entity ent = iter.next();
+				NodeValueShard shard = (NodeValueShard) MemoStorable.load(ent);
+				NodeValueShard.dropHistory(shard);
+			}
+		}
+		synchronized (ArcOpIndexes) {
+			Query q = new Query("ArcOpShard");
+			PreparedQuery prep = datastore.prepare(q);
+			Iterator<Entity> iter = prep.asIterable().iterator();
+			while (iter.hasNext()) {
+				Entity ent = iter.next();
+				ArcOpShard shard = (ArcOpShard) MemoStorable.load(ent);
+				ArcOpShard.dropHistory(shard);
+			}			
+		}
+	}
 
 	public void exportDB(OutputStream out, boolean history) {
 		// Select export (first all, later history)

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
@@ -22,42 +23,66 @@ public final class NodeValueShard extends MemoStorable {
 	final long newest;
 	final NodeValue[] nodeArray;
 	final int size;
-	
+
 	transient private final static UuidCmp nodeCmp = new UuidCmp();
 
-	
-	public static void devideAndMerge(NodeValueShard[] shards){
-		if (shards.length <= 1) return;
-		System.out.println("Merging NodeValue shards:"+shards.length);
-		MemoReadBus ReadBus = MemoReadBus.getBus(); 
-		int maxSize = NodeValueBuffer.COMPRESSION_RATIO*NodeValueBuffer.STORESIZE;
-		ArrayList<NodeValue> nodes = new ArrayList<NodeValue>(maxSize/52);
-		for (NodeValueShard shard : shards){
-			nodes.ensureCapacity(nodes.size()+shard.nodeArray.length);
+	public static void dropHistory(NodeValueShard shard) {
+		MemoReadBus ReadBus = MemoReadBus.getBus();
+		HashMap<UUID, NodeValue> newNodes = new HashMap<UUID, NodeValue>(
+				shard.nodeArray.length);
+		
+		for (NodeValue node : shard.getNodes()) {
+			newNodes.put(node.getId(), node);
+		}
+		NodeValueShard newshard = new NodeValueShard(new ArrayList<NodeValue>(newNodes.values()));
+		NodeValueIndex index = new NodeValueIndex(newshard);
+		ReadBus.addNodeValueIndex(index, newshard);
+		NodeValueIndex idx = ReadBus.removeNodeValueIndexByShard(shard
+				.getMyKey());
+		if (idx != null)
+			idx.delete();
+		ReadBus.delShard(shard);
+		shard.delete();
+	}
+
+	public static void devideAndMerge(NodeValueShard[] shards) {
+		if (shards.length <= 1)
+			return;
+		System.out.println("Merging NodeValue shards:" + shards.length);
+		MemoReadBus ReadBus = MemoReadBus.getBus();
+		int maxSize = NodeValueBuffer.COMPRESSION_RATIO
+				* NodeValueBuffer.STORESIZE;
+		ArrayList<NodeValue> nodes = new ArrayList<NodeValue>(maxSize / 52);
+		for (NodeValueShard shard : shards) {
+			nodes.ensureCapacity(nodes.size() + shard.nodeArray.length);
 			nodes.addAll(Arrays.asList(shard.nodeArray));
 		}
-		Collections.sort(nodes); //Sort on Timestamp
-		ArrayList<NodeValue> newNodes = new ArrayList<NodeValue>(Math.min(maxSize/52,nodes.size()));
-		
+		Collections.sort(nodes); // Sort on Timestamp
+		ArrayList<NodeValue> newNodes = new ArrayList<NodeValue>(Math.min(
+				maxSize / 52, nodes.size()));
+
 		Iterator<NodeValue> iter = nodes.iterator();
-		while (iter.hasNext()){
-			int count = maxSize-(newNodes.size()>0?newNodes.get(0).getValue().length+48:0);
-			NodeValue node = iter.hasNext()?iter.next():null;
-			while (count > 0 && node != null){
+		while (iter.hasNext()) {
+			int count = maxSize
+					- (newNodes.size() > 0 ? newNodes.get(0).getValue().length + 48
+							: 0);
+			NodeValue node = iter.hasNext() ? iter.next() : null;
+			while (count > 0 && node != null) {
 				newNodes.add(node);
 				iter.remove();
-				count-=node.getValue().length+48;
-				node = iter.hasNext()?iter.next():null;
+				count -= node.getValue().length + 48;
+				node = iter.hasNext() ? iter.next() : null;
 			}
-			if (count <= 0){
+			if (count <= 0) {
 				NodeValueShard shard = new NodeValueShard(newNodes);
 				NodeValueIndex index = new NodeValueIndex(shard);
 				ReadBus.addNodeValueIndex(index, shard);
 				newNodes.clear();
 			}
-			if (node!=null) newNodes.add(node);
+			if (node != null)
+				newNodes.add(node);
 		}
-		if (newNodes.size() > 0){
+		if (newNodes.size() > 0) {
 			NodeValueShard shard = new NodeValueShard(newNodes);
 			NodeValueIndex index = new NodeValueIndex(shard);
 			ReadBus.addNodeValueIndex(index, shard);
@@ -72,46 +97,55 @@ public final class NodeValueShard extends MemoStorable {
 			other.delete();
 		}
 	}
-	public NodeValueShard(NodeValueBuffer buffer){
-		List<NodeValue> list = new ArrayList<NodeValue>(buffer.nodes.values());	
+
+	public NodeValueShard(NodeValueBuffer buffer) {
+		List<NodeValue> list = new ArrayList<NodeValue>(buffer.nodes.values());
 		newest = buffer.getNewest();
 		oldest = buffer.getOldest();
 		Collections.sort(list);
-		Collections.sort(list,nodeCmp);
-		nodeArray=list.toArray(new NodeValue[0]);
+		Collections.sort(list, nodeCmp);
+		nodeArray = list.toArray(new NodeValue[0]);
 		int count = 0;
-		for (NodeValue val: nodeArray){
-			count+=val.getValue().length+48;
+		for (NodeValue val : nodeArray) {
+			count += val.getValue().length + 48;
 		}
-		size=count;
-		if (nodeArray.length>0){
-			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length-1].getId())-MemoUtils.gettime(nodeArray[0].getId());
+		size = count;
+		if (nodeArray.length > 0) {
+			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length - 1]
+					.getId()) - MemoUtils.gettime(nodeArray[0].getId());
 		}
 	}
-	public NodeValueShard(ArrayList<NodeValue> nodeList){
+
+	public NodeValueShard(List<NodeValue> nodeList) {
 		Collections.sort(nodeList);
 		oldest = nodeList.get(0).getTimestamp_long();
-		newest = nodeList.get(nodeList.size()-1).getTimestamp_long();
-		
-		Collections.sort(nodeList,nodeCmp);
+		newest = nodeList.get(nodeList.size() - 1).getTimestamp_long();
+
+		Collections.sort(nodeList, nodeCmp);
 		nodeArray = nodeList.toArray(new NodeValue[0]);
 		int count = 0;
-		for (NodeValue val: nodeArray){
-			count+=val.getValue().length+48;
+		for (NodeValue val : nodeArray) {
+			count += val.getValue().length + 48;
 		}
-		size=count;
-		if (nodeArray.length>0){
-			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length-1].getId())-MemoUtils.gettime(nodeArray[0].getId());
+		size = count;
+		if (nodeArray.length > 0) {
+			this.spread = MemoUtils.gettime(nodeArray[nodeArray.length - 1]
+					.getId()) - MemoUtils.gettime(nodeArray[0].getId());
 		}
 	}
+
 	public ImmutableList<NodeValue> findAll(UUID id) {
-		int pivot = Arrays.binarySearch(nodeArray,new NodeValue(id,null,0),nodeCmp);
-		if (pivot<0) return ImmutableList.of();
-		while (pivot>0 && nodeArray[pivot-1].getId().time == id.time) pivot--;
+		int pivot = Arrays.binarySearch(nodeArray, new NodeValue(id, null, 0),
+				nodeCmp);
+		if (pivot < 0)
+			return ImmutableList.of();
+		while (pivot > 0 && nodeArray[pivot - 1].getId().time == id.time)
+			pivot--;
 		Builder<NodeValue> resBuilder = ImmutableList.builder();
-		while (pivot<nodeArray.length && nodeArray[pivot].getId().time == id.time){
+		while (pivot < nodeArray.length
+				&& nodeArray[pivot].getId().time == id.time) {
 			NodeValue val = nodeArray[pivot];
-			if (val.getId().equals(id)){
+			if (val.getId().equals(id)) {
 				resBuilder.add(val);
 			}
 			pivot++;
@@ -128,18 +162,22 @@ public final class NodeValueShard extends MemoStorable {
 	}
 
 	public NodeValue findBefore(UUID id, long timestamp_long) {
-		if (timestamp_long < oldest){
+		if (timestamp_long < oldest) {
 			System.out.println("Took shortcut! ??");
 			return null; // shortcut, will probably not be used...
-		}		
-		int pivot = Arrays.binarySearch(nodeArray, new NodeValue(id,null,0),nodeCmp);
-		if (pivot<0){
+		}
+		int pivot = Arrays.binarySearch(nodeArray, new NodeValue(id, null, 0),
+				nodeCmp);
+		if (pivot < 0) {
 			return null;
 		}
-		while (pivot<nodeArray.length-1 && nodeArray[pivot+1].getId().time == id.time) pivot++;
-		while (pivot>=0 && nodeArray[pivot].getId().time == id.time){
+		while (pivot < nodeArray.length - 1
+				&& nodeArray[pivot + 1].getId().time == id.time)
+			pivot++;
+		while (pivot >= 0 && nodeArray[pivot].getId().time == id.time) {
 			NodeValue val = nodeArray[pivot];
-			if (val.getId().equals(id) && val.getTimestamp_long()<=timestamp_long){
+			if (val.getId().equals(id)
+					&& val.getTimestamp_long() <= timestamp_long) {
 				return val;
 			}
 			pivot--;
@@ -147,9 +185,10 @@ public final class NodeValueShard extends MemoStorable {
 		return null;
 	}
 
-	public NodeValue[] getNodes(){
+	public NodeValue[] getNodes() {
 		return this.nodeArray;
 	}
+
 	public long getOldest() {
 		return oldest;
 	}
@@ -157,14 +196,17 @@ public final class NodeValueShard extends MemoStorable {
 	public long getNewest() {
 		return newest;
 	}
+
 	@Override
-	public int getSize(){
+	public int getSize() {
 		return this.size;
 	}
-	
+
 }
-class UuidCmp implements Comparator<NodeValue>{
-	public int compare(NodeValue a,NodeValue b) {
-		return a.getId().time==b.getId().time?0:(MemoUtils.gettime(a.getId())>MemoUtils.gettime(b.getId())?1:-1);
+
+class UuidCmp implements Comparator<NodeValue> {
+	public int compare(NodeValue a, NodeValue b) {
+		return a.getId().time == b.getId().time ? 0 : (MemoUtils.gettime(a
+				.getId()) > MemoUtils.gettime(b.getId()) ? 1 : -1);
 	}
 }
